@@ -49,37 +49,30 @@ export default function ProductPage({ params }: ProductPageProps) {
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             <Link href="/" className="flex items-center space-x-4 space-x-reverse">
-              <Image src="/logo.png" alt="EazySoft Logo" width={50} height={50} className="h-12 w-auto" />
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">EazySoft</h1>
-                <p className="text-sm text-gray-600">حلول الأمان والمنازل الذكية</p>
-              </div>
+              <Image src="/easyoft-logo.png" alt="EASYoft Logo" width={120} height={60} className="h-12 w-auto" />
             </Link>
 
             <nav className="hidden lg:flex items-center space-x-6 space-x-reverse">
-              <Link href="/" className="text-gray-700 hover:text-red-600">
+              <Link href="/" className="text-gray-700 hover:text-brand-primary">
                 الرئيسية
               </Link>
               {categories.map((category) => (
                 <Link
                   key={category.id}
                   href={`/category/${category.slug}`}
-                  className="text-gray-700 hover:text-red-600 whitespace-nowrap"
+                  className="text-gray-700 hover:text-brand-primary whitespace-nowrap"
                 >
                   {category.name}
                 </Link>
               ))}
-              <Link href="/products" className="text-gray-700 hover:text-red-600">
+              <Link href="/products" className="text-gray-700 hover:text-brand-primary">
                 كل المنتجات
               </Link>
-              <Link href="/about" className="text-gray-700 hover:text-red-600">
+              <Link href="/about" className="text-gray-700 hover:text-brand-primary">
                 من نحن
               </Link>
-              <Link href="/contact" className="text-gray-700 hover:text-red-600">
+              <Link href="/contact" className="text-gray-700 hover:text-brand-primary">
                 تواصل معنا
-              </Link>
-              <Link href="/admin" className="text-red-600 hover:text-red-700 font-medium">
-                لوحة التحكم
               </Link>
             </nav>
 
@@ -88,7 +81,7 @@ export default function ProductPage({ params }: ProductPageProps) {
               <Link href="/cart">
                 <Button variant="ghost" size="icon" className="relative">
                   <ShoppingCart className="h-5 w-5" />
-                  <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                  <span className="absolute -top-2 -right-2 bg-brand-primary text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
                     {cart.itemCount}
                   </span>
                 </Button>
@@ -102,11 +95,11 @@ export default function ProductPage({ params }: ProductPageProps) {
       <div className="container mx-auto px-4 py-8">
         {/* Breadcrumb */}
         <div className="flex items-center space-x-2 space-x-reverse text-sm text-gray-600 mb-6">
-          <Link href="/" className="hover:text-red-600">
+          <Link href="/" className="hover:text-brand-primary">
             الرئيسية
           </Link>
           <span>/</span>
-          <Link href="/products" className="hover:text-red-600">
+          <Link href="/products" className="hover:text-brand-primary">
             المنتجات
           </Link>
           <span>/</span>
@@ -119,7 +112,9 @@ export default function ProductPage({ params }: ProductPageProps) {
           <div className="relative">
             <div className="relative h-96 lg:h-[500px] rounded-lg overflow-hidden bg-white shadow-sm">
               <Image src={product.image || "/placeholder.svg"} alt={product.name} fill className="object-cover" />
-              {product.badge && <Badge className="absolute top-4 right-4 bg-red-600 text-white">{product.badge}</Badge>}
+              {product.badge && (
+                <Badge className="absolute top-4 right-4 bg-brand-primary text-white">{product.badge}</Badge>
+              )}
               {product.originalPrice && (
                 <div className="absolute top-4 left-4 bg-green-600 text-white px-3 py-2 rounded font-bold">
                   وفر {(((product.originalPrice - product.price) / product.originalPrice) * 100).toFixed(0)}%
@@ -131,7 +126,7 @@ export default function ProductPage({ params }: ProductPageProps) {
           {/* Product Info */}
           <div>
             <div className="mb-4">
-              <Badge variant="outline" className="text-red-600 border-red-200 mb-2">
+              <Badge variant="outline" className="text-brand-primary border-brand-secondary mb-2">
                 {product.category}
               </Badge>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">{product.name}</h1>
@@ -156,7 +151,7 @@ export default function ProductPage({ params }: ProductPageProps) {
             {/* Price */}
             <div className="mb-6">
               <div className="flex items-center space-x-4 space-x-reverse mb-2">
-                <span className="text-3xl font-bold text-red-600">{product.price.toLocaleString()} ر.س</span>
+                <span className="text-3xl font-bold text-brand-primary">{product.price.toLocaleString()} ر.س</span>
                 {product.originalPrice && (
                   <span className="text-xl text-gray-400 line-through">
                     {product.originalPrice.toLocaleString()} ر.س
@@ -187,7 +182,7 @@ export default function ProductPage({ params }: ProductPageProps) {
             <div className="mb-8">
               <Button
                 size="lg"
-                className="w-full bg-red-600 hover:bg-red-700 mb-4"
+                className="w-full bg-brand-primary hover:bg-brand-secondary mb-4"
                 disabled={!product.inStock}
                 onClick={handleAddToCart}
               >
@@ -198,15 +193,15 @@ export default function ProductPage({ params }: ProductPageProps) {
               {/* Service Features */}
               <div className="grid grid-cols-3 gap-4 text-center">
                 <div className="flex flex-col items-center">
-                  <Shield className="h-6 w-6 text-red-600 mb-1" />
+                  <Shield className="h-6 w-6 text-brand-primary mb-1" />
                   <span className="text-xs text-gray-600">ضمان سنتان</span>
                 </div>
                 <div className="flex flex-col items-center">
-                  <Truck className="h-6 w-6 text-red-600 mb-1" />
+                  <Truck className="h-6 w-6 text-brand-primary mb-1" />
                   <span className="text-xs text-gray-600">شحن مجاني</span>
                 </div>
                 <div className="flex flex-col items-center">
-                  <RefreshCw className="h-6 w-6 text-red-600 mb-1" />
+                  <RefreshCw className="h-6 w-6 text-brand-primary mb-1" />
                   <span className="text-xs text-gray-600">إرجاع مجاني</span>
                 </div>
               </div>
@@ -247,7 +242,7 @@ export default function ProductPage({ params }: ProductPageProps) {
                         className="object-cover group-hover:scale-105 transition-transform duration-300"
                       />
                       {relatedProduct.badge && (
-                        <Badge className="absolute top-2 right-2 bg-red-600 text-white text-xs">
+                        <Badge className="absolute top-2 right-2 bg-brand-primary text-white text-xs">
                           {relatedProduct.badge}
                         </Badge>
                       )}
@@ -255,10 +250,10 @@ export default function ProductPage({ params }: ProductPageProps) {
                     <CardContent className="p-4">
                       <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">{relatedProduct.name}</h3>
                       <div className="flex items-center justify-between">
-                        <span className="text-lg font-bold text-red-600">
+                        <span className="text-lg font-bold text-brand-primary">
                           {relatedProduct.price.toLocaleString()} ر.س
                         </span>
-                        <Button size="sm" className="bg-red-600 hover:bg-red-700 text-xs px-3">
+                        <Button size="sm" className="bg-brand-primary hover:bg-brand-secondary text-xs px-3">
                           عرض
                         </Button>
                       </div>

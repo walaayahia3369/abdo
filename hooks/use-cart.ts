@@ -1,49 +1,102 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { cartManager, type Cart } from "@/lib/cart"
+import { create } from "zustand"
+import { persist } from "zustand/middleware"
 
-export function useCart() {
-  const [cart, setCart] = useState<Cart>({ items: [], total: 0, itemCount: 0 })
+export interface CartItem {
+  id: number
+  name: string
+  price: number
+  image: string
+  category: string
+  brand: string
+  quantity: number
+}
 
-  useEffect(() => {
-    // Initialize cart
-    setCart(cartManager.getCart())
+interface CartStore {
+  items: CartItem[]
+  itemCount: number
+  total: number
+  addToCart: (product: Omit<CartItem, "quantity">) => void
+  removeFromCart: (id: number) => void
+  updateQuantity: (id: number, quantity: number) => void
+  clearCart: () => void
+}
 
-    // Subscribe to cart changes
-    const unsubscribe = cartManager.subscribe(setCart)
+export const useCart = create<CartStore>()(
+  persist(
+    (set, get) => ({
+      items: [],
+      itemCount: 0,
+      total: 0,
 
-    return unsubscribe
-  }, [])
+      addToCart: (product) => {
+        const items = get().items
+        const existingItem = items.find((item) => item.id === product.id)
 
-  const addToCart = (product: {
-    id: number
-    name: string
-    price: number
-    image: string
-    category: string
-    brand: string
-  }) => {
-    cartManager.addItem(product)
-  }
+        if (existingItem) {
+          set({
+            items: items.map((item) => (item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item)),
+          })
+        } else {
+          set({
+            items: [...items, { ...product, quantity: 1 }],
+          })
+        }
 
-  const removeFromCart = (productId: number) => {
-    cartManager.removeItem(productId)
-  }
+        // Update computed values
+        const newItems = get().items
+        set({
+          itemCount: newItems.reduce((sum, item) => sum + item.quantity, 0),
+          total: newItems.reduce((sum, item) => sum + item.price * item.quantity, 0),
+        })
+      },
 
-  const updateQuantity = (productId: number, quantity: number) => {
-    cartManager.updateQuantity(productId, quantity)
-  }
+      removeFromCart: (id) => {
+        const items = get().items.filter((item) => item.id !== id)
+        set({
+          items,
+          itemCount: items.reduce((sum, item) => sum + item.quantity, 0),
+          total: items.reduce((sum, item) => sum + item.price * item.quantity, 0),
+        })
+      },
 
-  const clearCart = () => {
-    cartManager.clearCart()
-  }
+      updateQuantity: (id, quantity) => {
+        if (quantity <= 0) {
+          get().removeFromCart(id)
+          return
+        }
 
-  return {
-    cart,
-    addToCart,
-    removeFromCart,
-    updateQuantity,
-    clearCart,
-  }
+        const items = get().items.map((item) => (item.id === id ? { ...item, quantity } : item))
+
+        set({
+          items,
+          itemCount: items.reduce((sum, item) => sum + item.quantity, 0),
+          total: items.reduce((sum, item) => sum + item.price * item.quantity, 0),
+        })
+      },
+
+      clearCart: () => {
+        set({
+          items: [],
+          itemCount: 0,
+          total: 0,
+        })
+      },
+    }),
+    {
+      name: "cart-storage",
+    },
+  ),
+)
+
+// Legacy export for backward compatibility
+export const cart = {
+  items: [],
+  itemCount: 0,
+  total: 0,
+  addToCart: () => {},
+  removeFromCart: () => {},
+  updateQuantity: () => {},
+  clearCart: () => {},
 }

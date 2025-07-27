@@ -46,37 +46,30 @@ export default function CategoryPage({ params }: CategoryPageProps) {
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             <Link href="/" className="flex items-center space-x-4 space-x-reverse">
-              <Image src="/logo.png" alt="EazySoft Logo" width={50} height={50} className="h-12 w-auto" />
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">EazySoft</h1>
-                <p className="text-sm text-gray-600">حلول الأمان والمنازل الذكية</p>
-              </div>
+              <Image src="/easyoft-logo.png" alt="EASYoft Logo" width={120} height={60} className="h-12 w-auto" />
             </Link>
 
             <nav className="hidden lg:flex items-center space-x-6 space-x-reverse">
-              <Link href="/" className="text-gray-700 hover:text-red-600">
+              <Link href="/" className="text-gray-700 hover:text-brand-primary">
                 الرئيسية
               </Link>
               {categories.map((cat) => (
                 <Link
                   key={cat.id}
                   href={`/category/${cat.slug}`}
-                  className={`hover:text-red-600 whitespace-nowrap ${cat.slug === params.slug ? "text-red-600 font-medium" : "text-gray-700"}`}
+                  className={`hover:text-brand-primary whitespace-nowrap ${cat.slug === params.slug ? "text-brand-primary font-medium" : "text-gray-700"}`}
                 >
                   {cat.name}
                 </Link>
               ))}
-              <Link href="/products" className="text-gray-700 hover:text-red-600">
+              <Link href="/products" className="text-gray-700 hover:text-brand-primary">
                 كل المنتجات
               </Link>
-              <Link href="/about" className="text-gray-700 hover:text-red-600">
+              <Link href="/about" className="text-gray-700 hover:text-brand-primary">
                 من نحن
               </Link>
-              <Link href="/contact" className="text-gray-700 hover:text-red-600">
+              <Link href="/contact" className="text-gray-700 hover:text-brand-primary">
                 تواصل معنا
-              </Link>
-              <Link href="/admin" className="text-red-600 hover:text-red-700 font-medium">
-                لوحة التحكم
               </Link>
             </nav>
 
@@ -85,7 +78,7 @@ export default function CategoryPage({ params }: CategoryPageProps) {
               <Link href="/cart">
                 <Button variant="ghost" size="icon" className="relative">
                   <ShoppingCart className="h-5 w-5" />
-                  <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                  <span className="absolute -top-2 -right-2 bg-brand-primary text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
                     {cart.itemCount}
                   </span>
                 </Button>
@@ -99,7 +92,7 @@ export default function CategoryPage({ params }: CategoryPageProps) {
       <div className="container mx-auto px-4 py-8">
         {/* Breadcrumb */}
         <div className="flex items-center space-x-2 space-x-reverse text-sm text-gray-600 mb-6">
-          <Link href="/" className="hover:text-red-600">
+          <Link href="/" className="hover:text-brand-primary">
             الرئيسية
           </Link>
           <span>/</span>
@@ -120,7 +113,7 @@ export default function CategoryPage({ params }: CategoryPageProps) {
             <div className="flex-1 text-center md:text-right">
               <h1 className="text-3xl font-bold text-gray-900 mb-4">{category.name}</h1>
               <p className="text-gray-600 text-lg mb-4">{category.description}</p>
-              <Badge variant="outline" className="text-red-600 border-red-200">
+              <Badge variant="outline" className="text-brand-primary border-brand-secondary">
                 {products.length} منتج متاح
               </Badge>
             </div>
@@ -139,7 +132,7 @@ export default function CategoryPage({ params }: CategoryPageProps) {
                   className="object-cover group-hover:scale-105 transition-transform duration-300"
                 />
                 {product.badge && (
-                  <Badge className="absolute top-2 right-2 bg-red-600 text-white text-xs">{product.badge}</Badge>
+                  <Badge className="absolute top-2 right-2 bg-brand-primary text-white text-xs">{product.badge}</Badge>
                 )}
                 {product.originalPrice && (
                   <div className="absolute top-2 left-2 bg-green-600 text-white px-2 py-1 rounded text-xs font-bold">
@@ -163,7 +156,7 @@ export default function CategoryPage({ params }: CategoryPageProps) {
                   <ul className="text-xs text-gray-600 space-y-1">
                     {product.features.slice(0, 2).map((feature, idx) => (
                       <li key={idx} className="flex items-center">
-                        <span className="w-1 h-1 bg-red-500 rounded-full ml-2"></span>
+                        <span className="w-1 h-1 bg-brand-primary rounded-full ml-2"></span>
                         {feature}
                       </li>
                     ))}
@@ -173,7 +166,7 @@ export default function CategoryPage({ params }: CategoryPageProps) {
                 <div className="flex items-center justify-between">
                   <div className="flex flex-col">
                     <div className="flex items-center space-x-2 space-x-reverse">
-                      <span className="text-lg font-bold text-red-600">{product.price.toLocaleString()} ر.س</span>
+                      <span className="text-lg font-bold text-brand-primary">{product.price.toLocaleString()} ر.س</span>
                       {product.originalPrice && (
                         <span className="text-sm text-gray-400 line-through">
                           {product.originalPrice.toLocaleString()} ر.س
@@ -183,7 +176,7 @@ export default function CategoryPage({ params }: CategoryPageProps) {
                   </div>
                   <Button
                     size="sm"
-                    className="bg-red-600 hover:bg-red-700 text-xs px-3"
+                    className="bg-brand-primary hover:bg-brand-secondary text-xs px-3"
                     onClick={() => handleAddToCart(product)}
                   >
                     أضف للسلة
@@ -199,7 +192,7 @@ export default function CategoryPage({ params }: CategoryPageProps) {
             <h3 className="text-lg font-semibold text-gray-900 mb-2">لا توجد منتجات في هذه الفئة حالياً</h3>
             <p className="text-gray-600 mb-4">تحقق مرة أخرى قريباً أو تصفح فئات أخرى</p>
             <Link href="/products">
-              <Button className="bg-red-600 hover:bg-red-700">تصفح كل المنتجات</Button>
+              <Button className="bg-brand-primary hover:bg-brand-secondary">تصفح كل المنتجات</Button>
             </Link>
           </div>
         )}

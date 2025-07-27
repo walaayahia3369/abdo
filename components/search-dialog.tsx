@@ -1,61 +1,48 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
+import { Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Search, ShoppingCart } from "lucide-react"
-import { db, type Product } from "@/lib/db"
-import { useCart } from "@/hooks/use-cart"
+import { Input } from "@/components/ui/input"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Card, CardContent } from "@/components/ui/card"
 import Image from "next/image"
 import Link from "next/link"
+import { db, type Product } from "@/lib/db"
 
 export function SearchDialog() {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<Product[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-  const { addToCart } = useCart()
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    if (query.trim().length < 2) {
+    if (query.length < 2) {
       setResults([])
       return
     }
 
-    setIsLoading(true)
-
-    // Simulate API delay
-    const timer = setTimeout(() => {
-      const allProducts = db.getProducts()
-      const filtered = allProducts
-        .filter(
+    const searchProducts = async () => {
+      setLoading(true)
+      try {
+        const products = await db.getProducts()
+        const filtered = products.filter(
           (product) =>
             product.name.toLowerCase().includes(query.toLowerCase()) ||
             product.category.toLowerCase().includes(query.toLowerCase()) ||
-            product.brand.toLowerCase().includes(query.toLowerCase()) ||
-            product.description.toLowerCase().includes(query.toLowerCase()),
+            product.brand.toLowerCase().includes(query.toLowerCase()),
         )
-        .slice(0, 8) // Limit to 8 results
+        setResults(filtered.slice(0, 6))
+      } catch (error) {
+        console.error("Error searching products:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
 
-      setResults(filtered)
-      setIsLoading(false)
-    }, 300)
-
-    return () => clearTimeout(timer)
+    const debounce = setTimeout(searchProducts, 300)
+    return () => clearTimeout(debounce)
   }, [query])
-
-  const handleAddToCart = (product: Product) => {
-    addToCart({
-      id: product.id,
-      name: product.name,
-      price: product.price,
-      image: product.image,
-      category: product.category,
-      brand: product.brand,
-    })
-  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -64,16 +51,15 @@ export function SearchDialog() {
           <Search className="h-5 w-5" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[80vh]" dir="rtl">
+      <DialogContent className="max-w-2xl" dir="rtl">
         <DialogHeader>
           <DialogTitle>البحث في المنتجات</DialogTitle>
         </DialogHeader>
-
         <div className="space-y-4">
           <div className="relative">
             <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
-              placeholder="ابحث عن المنتجات..."
+              placeholder="ابحث عن منتج..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               className="pr-10"
@@ -81,76 +67,45 @@ export function SearchDialog() {
             />
           </div>
 
-          <div className="max-h-96 overflow-y-auto">
-            {isLoading && (
-              <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mx-auto"></div>
-                <p className="text-gray-600 mt-2">جاري البحث...</p>
-              </div>
-            )}
+          {loading && (
+            <div className="text-center py-4">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-brand-primary mx-auto"></div>
+            </div>
+          )}
 
-            {!isLoading && query.trim().length >= 2 && results.length === 0 && (
-              <div className="text-center py-8">
-                <Search className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600">لم يتم العثور على نتائج</p>
-                <p className="text-sm text-gray-500">جرب كلمات مختلفة أو تحقق من الإملاء</p>
-              </div>
-            )}
-
-            {!isLoading && results.length > 0 && (
-              <div className="space-y-3">
-                {results.map((product) => (
-                  <div
-                    key={product.id}
-                    className="flex items-center space-x-4 space-x-reverse p-3 border rounded-lg hover:bg-gray-50"
-                  >
-                    <div className="relative w-16 h-16 flex-shrink-0">
-                      <Image
-                        src={product.image || "/placeholder.svg"}
-                        alt={product.name}
-                        fill
-                        className="object-cover rounded"
-                      />
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <Link href={`/product/${product.id}`} onClick={() => setOpen(false)} className="block">
-                        <h3 className="font-semibold text-gray-900 truncate hover:text-red-600">{product.name}</h3>
-                        <p className="text-sm text-gray-600">
-                          {product.category} • {product.brand}
-                        </p>
-                        <div className="flex items-center space-x-2 space-x-reverse mt-1">
-                          <span className="font-bold text-red-600">{product.price.toLocaleString()} ر.س</span>
-                          {product.badge && (
-                            <Badge variant="secondary" className="text-xs">
-                              {product.badge}
-                            </Badge>
-                          )}
+          {results.length > 0 && (
+            <div className="space-y-2 max-h-96 overflow-y-auto">
+              {results.map((product) => (
+                <Link key={product.id} href={`/product/${product.id}`} onClick={() => setOpen(false)}>
+                  <Card className="hover:shadow-md transition-shadow">
+                    <CardContent className="p-3">
+                      <div className="flex items-center space-x-3 space-x-reverse">
+                        <Image
+                          src={product.image || "/placeholder.svg"}
+                          alt={product.name}
+                          width={50}
+                          height={50}
+                          className="rounded-md"
+                        />
+                        <div className="flex-1">
+                          <h4 className="font-medium text-sm">{product.name}</h4>
+                          <p className="text-xs text-gray-600">{product.category}</p>
+                          <p className="text-sm font-bold text-brand-primary">{product.price.toLocaleString()} ر.س</p>
                         </div>
-                      </Link>
-                    </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          )}
 
-                    <Button
-                      size="sm"
-                      className="bg-red-600 hover:bg-red-700 flex-shrink-0"
-                      onClick={() => handleAddToCart(product)}
-                      disabled={!product.inStock}
-                    >
-                      <ShoppingCart className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {query.trim().length < 2 && (
-              <div className="text-center py-8">
-                <Search className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600">ابدأ بكتابة كلمة للبحث</p>
-                <p className="text-sm text-gray-500">يمكنك البحث بالاسم أو الفئة أو العلامة التجارية</p>
-              </div>
-            )}
-          </div>
+          {query.length >= 2 && results.length === 0 && !loading && (
+            <div className="text-center py-8 text-gray-500">
+              <Search className="h-12 w-12 mx-auto mb-2 opacity-50" />
+              <p>لم يتم العثور على منتجات</p>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

@@ -1,636 +1,309 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import type React from "react"
+
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import Image from "next/image"
+import { Plus, Edit, Trash2, Save, X, Settings, Package, BarChart3, Phone } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Switch } from "@/components/ui/switch"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import { Package, ShoppingCart, TrendingUp, Plus, Edit, Trash2, LogOut, Settings, Eye, Star } from "lucide-react"
-import { db, type Product, type Category, type SiteSettings } from "@/lib/db"
-import Image from "next/image"
-import Link from "next/link"
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { toast } from "@/hooks/use-toast"
+import { db, type Product, type Category, type SiteSettings, type ContactInfo } from "@/lib/db"
 
 export default function AdminDashboard() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const router = useRouter()
   const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<Category[]>([])
-  const [siteSettings, setSiteSettings] = useState<SiteSettings>({} as SiteSettings)
-
-  // Product Dialog States
-  const [isAddProductOpen, setIsAddProductOpen] = useState(false)
+  const [siteSettings, setSiteSettings] = useState<SiteSettings>({
+    heroTitle: "",
+    heroSubtitle: "",
+    heroBackgroundImage: "",
+    featuredSectionTitle: "",
+    featuredSectionSubtitle: "",
+  })
+  const [contactInfo, setContactInfo] = useState<ContactInfo>({
+    phone: "",
+    email: "",
+    address: "",
+    workingHours: "",
+  })
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
-  const [newProduct, setNewProduct] = useState({
-    name: "",
-    price: 0,
-    originalPrice: 0,
-    image: "",
-    category: "",
-    brand: "",
-    rating: 5,
-    reviews: 0,
-    features: [""],
-    inStock: true,
-    badge: "",
-    description: "",
-    specifications: {} as Record<string, string>,
-    isFeatured: false,
-  })
-
-  // Category Dialog States
-  const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false)
   const [editingCategory, setEditingCategory] = useState<Category | null>(null)
-  const [newCategory, setNewCategory] = useState({
-    name: "",
-    description: "",
-    image: "",
-    slug: "",
-    productCount: 0,
-  })
-
-  // Site Settings States
-  const [tempSiteSettings, setTempSiteSettings] = useState<SiteSettings>({} as SiteSettings)
+  const [isAddingProduct, setIsAddingProduct] = useState(false)
+  const [isAddingCategory, setIsAddingCategory] = useState(false)
 
   useEffect(() => {
-    // Check authentication
-    const isLoggedIn = localStorage.getItem("adminLoggedIn")
-    if (isLoggedIn === "true") {
-      setIsAuthenticated(true)
-      setProducts(db.getProducts())
-      setCategories(db.getCategories())
-      const settings = db.getSiteSettings()
-      setSiteSettings(settings)
-      setTempSiteSettings(settings)
-    } else {
-      window.location.href = "/admin"
+    // Check if user is authenticated (simple check)
+    const isAuthenticated = sessionStorage.getItem("admin_authenticated")
+    if (!isAuthenticated) {
+      router.push("/admin")
+      return
     }
-  }, [])
+
+    loadData()
+  }, [router])
+
+  const loadData = () => {
+    setProducts(db.getProducts())
+    setCategories(db.getCategories())
+    setSiteSettings(db.getSiteSettings())
+    setContactInfo(db.getContactInfo())
+  }
 
   const handleLogout = () => {
-    localStorage.removeItem("adminLoggedIn")
-    window.location.href = "/admin"
+    sessionStorage.removeItem("admin_authenticated")
+    router.push("/admin")
   }
 
-  // Product Functions
-  const handleAddProduct = () => {
-    const product = db.addProduct({
-      ...newProduct,
-      features: newProduct.features.filter((f) => f.trim() !== ""),
-    })
-    setProducts(db.getProducts())
-    setIsAddProductOpen(false)
-    resetProductForm()
-  }
-
-  const handleUpdateProduct = () => {
-    if (editingProduct) {
-      db.updateProduct(editingProduct.id, {
-        ...newProduct,
-        features: newProduct.features.filter((f) => f.trim() !== ""),
-      })
-      setProducts(db.getProducts())
+  const handleSaveProduct = (productData: Omit<Product, "id"> | Product) => {
+    try {
+      if ("id" in productData) {
+        // Update existing product
+        db.updateProduct(productData.id, productData)
+        toast({
+          title: "تم التحديث",
+          description: "تم تحديث المنتج بنجاح",
+        })
+      } else {
+        // Add new product
+        db.addProduct(productData)
+        toast({
+          title: "تم الإضافة",
+          description: "تم إضافة المنتج بنجاح",
+        })
+      }
+      loadData()
       setEditingProduct(null)
-      resetProductForm()
+      setIsAddingProduct(false)
+    } catch (error) {
+      toast({
+        title: "خطأ",
+        description: "حدث خطأ أثناء حفظ المنتج",
+        variant: "destructive",
+      })
     }
   }
 
   const handleDeleteProduct = (id: number) => {
-    if (confirm("هل أنت متأكد من حذف هذا المنتج؟")) {
+    try {
       db.deleteProduct(id)
-      setProducts(db.getProducts())
+      loadData()
+      toast({
+        title: "تم الحذف",
+        description: "تم حذف المنتج بنجاح",
+      })
+    } catch (error) {
+      toast({
+        title: "خطأ",
+        description: "حدث خطأ أثناء حذف المنتج",
+        variant: "destructive",
+      })
     }
   }
 
-  const handleEditProduct = (product: Product) => {
-    setEditingProduct(product)
-    setNewProduct({
-      name: product.name,
-      price: product.price,
-      originalPrice: product.originalPrice || 0,
-      image: product.image,
-      category: product.category,
-      brand: product.brand,
-      rating: product.rating,
-      reviews: product.reviews,
-      features: product.features,
-      inStock: product.inStock,
-      badge: product.badge || "",
-      description: product.description,
-      specifications: product.specifications,
-      isFeatured: product.isFeatured,
-    })
-  }
-
-  const resetProductForm = () => {
-    setNewProduct({
-      name: "",
-      price: 0,
-      originalPrice: 0,
-      image: "",
-      category: "",
-      brand: "",
-      rating: 5,
-      reviews: 0,
-      features: [""],
-      inStock: true,
-      badge: "",
-      description: "",
-      specifications: {},
-      isFeatured: false,
-    })
-  }
-
-  // Category Functions
-  const handleAddCategory = () => {
-    const category = db.addCategory(newCategory)
-    setCategories(db.getCategories())
-    setIsAddCategoryOpen(false)
-    resetCategoryForm()
-  }
-
-  const handleUpdateCategory = () => {
-    if (editingCategory) {
-      db.updateCategory(editingCategory.id, newCategory)
-      setCategories(db.getCategories())
+  const handleSaveCategory = (categoryData: Omit<Category, "id"> | Category) => {
+    try {
+      if ("id" in categoryData) {
+        // Update existing category
+        db.updateCategory(categoryData.id, categoryData)
+        toast({
+          title: "تم التحديث",
+          description: "تم تحديث الفئة بنجاح",
+        })
+      } else {
+        // Add new category
+        db.addCategory(categoryData)
+        toast({
+          title: "تم الإضافة",
+          description: "تم إضافة الفئة بنجاح",
+        })
+      }
+      loadData()
       setEditingCategory(null)
-      resetCategoryForm()
+      setIsAddingCategory(false)
+    } catch (error) {
+      toast({
+        title: "خطأ",
+        description: "حدث خطأ أثناء حفظ الفئة",
+        variant: "destructive",
+      })
     }
   }
 
   const handleDeleteCategory = (id: number) => {
-    if (confirm("هل أنت متأكد من حذف هذا القسم؟")) {
+    try {
       db.deleteCategory(id)
-      setCategories(db.getCategories())
+      loadData()
+      toast({
+        title: "تم الحذف",
+        description: "تم حذف الفئة بنجاح",
+      })
+    } catch (error) {
+      toast({
+        title: "خطأ",
+        description: "حدث خطأ أثناء حذف الفئة",
+        variant: "destructive",
+      })
     }
   }
 
-  const handleEditCategory = (category: Category) => {
-    setEditingCategory(category)
-    setNewCategory({
-      name: category.name,
-      description: category.description,
-      image: category.image,
-      slug: category.slug,
-      productCount: category.productCount,
-    })
+  const handleSaveSiteSettings = (settings: SiteSettings) => {
+    try {
+      db.updateSiteSettings(settings)
+      setSiteSettings(settings)
+      toast({
+        title: "تم التحديث",
+        description: "تم تحديث إعدادات الموقع بنجاح",
+      })
+    } catch (error) {
+      toast({
+        title: "خطأ",
+        description: "حدث خطأ أثناء حفظ الإعدادات",
+        variant: "destructive",
+      })
+    }
   }
 
-  const resetCategoryForm = () => {
-    setNewCategory({
-      name: "",
-      description: "",
-      image: "",
-      slug: "",
-      productCount: 0,
-    })
+  const handleSaveContactInfo = (info: ContactInfo) => {
+    try {
+      db.updateContactInfo(info)
+      setContactInfo(info)
+      toast({
+        title: "تم التحديث",
+        description: "تم تحديث معلومات التواصل بنجاح",
+      })
+    } catch (error) {
+      toast({
+        title: "خطأ",
+        description: "حدث خطأ أثناء حفظ معلومات التواصل",
+        variant: "destructive",
+      })
+    }
   }
-
-  // Site Settings Functions
-  const handleUpdateSiteSettings = () => {
-    const updated = db.updateSiteSettings(tempSiteSettings)
-    setSiteSettings(updated)
-    alert("تم حفظ إعدادات الموقع بنجاح!")
-  }
-
-  // Helper Functions
-  const addFeature = () => {
-    setNewProduct((prev) => ({
-      ...prev,
-      features: [...prev.features, ""],
-    }))
-  }
-
-  const updateFeature = (index: number, value: string) => {
-    setNewProduct((prev) => ({
-      ...prev,
-      features: prev.features.map((f, i) => (i === index ? value : f)),
-    }))
-  }
-
-  const removeFeature = (index: number) => {
-    setNewProduct((prev) => ({
-      ...prev,
-      features: prev.features.filter((_, i) => i !== index),
-    }))
-  }
-
-  const generateSlug = (name: string) => {
-    return name
-      .toLowerCase()
-      .replace(/[^a-z0-9\u0600-\u06FF]/g, "-")
-      .replace(/-+/g, "-")
-      .replace(/^-|-$/g, "")
-  }
-
-  if (!isAuthenticated) {
-    return <div>جاري التحميل...</div>
-  }
-
-  const totalProducts = products.length
-  const inStockProducts = products.filter((p) => p.inStock).length
-  const outOfStockProducts = totalProducts - inStockProducts
-  const featuredProducts = products.filter((p) => p.isFeatured).length
 
   return (
-    <div className="min-h-screen bg-gray-50" dir="rtl">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white shadow-sm border-b">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-4 space-x-reverse">
-              <Link href="/" className="flex items-center space-x-2 space-x-reverse">
-                <Image src="/logo.png" alt="EazySoft Logo" width={40} height={40} className="h-10 w-auto" />
-                <div>
-                  <h1 className="text-lg font-bold text-gray-900">لوحة التحكم</h1>
-                  <p className="text-sm text-gray-600">EazySoft Admin</p>
-                </div>
-              </Link>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-4">
+            <div className="flex items-center">
+              <Image src="/easyoft-logo.png" alt="EASYoft" width={120} height={40} className="h-8 w-auto" />
+              <h1 className="mr-4 text-xl font-semibold text-easyoft-dark">لوحة التحكم</h1>
             </div>
-
-            <div className="flex items-center space-x-4 space-x-reverse">
-              <Link href="/">
-                <Button variant="ghost" size="sm">
-                  <Eye className="h-4 w-4 ml-2" />
-                  عرض الموقع
-                </Button>
-              </Link>
-              <Button variant="ghost" size="sm" onClick={handleLogout}>
-                <LogOut className="h-4 w-4 ml-2" />
-                تسجيل الخروج
-              </Button>
-            </div>
+            <Button onClick={handleLogout} variant="outline">
+              تسجيل الخروج
+            </Button>
           </div>
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-8">
-        {/* Stats Cards */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">إجمالي المنتجات</CardTitle>
-              <Package className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{totalProducts}</div>
-              <p className="text-xs text-muted-foreground">منتج في المتجر</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">متوفر في المخزون</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">{inStockProducts}</div>
-              <p className="text-xs text-muted-foreground">منتج متاح</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">نفد من المخزون</CardTitle>
-              <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-red-600">{outOfStockProducts}</div>
-              <p className="text-xs text-muted-foreground">منتج غير متاح</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">المنتجات المميزة</CardTitle>
-              <Star className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-yellow-600">{featuredProducts}</div>
-              <p className="text-xs text-muted-foreground">منتج مميز</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Main Tabs */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs defaultValue="products" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="products">المنتجات</TabsTrigger>
-            <TabsTrigger value="categories">الأقسام الرئيسية</TabsTrigger>
-            <TabsTrigger value="featured">المنتجات المميزة</TabsTrigger>
-            <TabsTrigger value="settings">إعدادات الموقع</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="products" className="flex items-center gap-2">
+              <Package className="h-4 w-4" />
+              المنتجات
+            </TabsTrigger>
+            <TabsTrigger value="categories" className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" />
+              الفئات
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              إعدادات الموقع
+            </TabsTrigger>
+            <TabsTrigger value="contact" className="flex items-center gap-2">
+              <Phone className="h-4 w-4" />
+              معلومات التواصل
+            </TabsTrigger>
+            <TabsTrigger value="stats" className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" />
+              الإحصائيات
+            </TabsTrigger>
           </TabsList>
 
           {/* Products Tab */}
           <TabsContent value="products">
             <Card>
               <CardHeader>
-                <div className="flex items-center justify-between">
+                <div className="flex justify-between items-center">
                   <div>
                     <CardTitle>إدارة المنتجات</CardTitle>
                     <CardDescription>إضافة وتعديل وحذف المنتجات</CardDescription>
                   </div>
-                  <Dialog open={isAddProductOpen} onOpenChange={setIsAddProductOpen}>
-                    <DialogTrigger asChild>
-                      <Button className="bg-red-600 hover:bg-red-700">
-                        <Plus className="h-4 w-4 ml-2" />
-                        إضافة منتج جديد
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" dir="rtl">
-                      <DialogHeader>
-                        <DialogTitle>{editingProduct ? "تعديل المنتج" : "إضافة منتج جديد"}</DialogTitle>
-                        <DialogDescription>
-                          {editingProduct ? "تعديل تفاصيل المنتج" : "أدخل تفاصيل المنتج الجديد"}
-                        </DialogDescription>
-                      </DialogHeader>
-
-                      <div className="grid grid-cols-2 gap-6">
-                        {/* Left Column */}
-                        <div className="space-y-4">
-                          <div>
-                            <Label htmlFor="name">اسم المنتج</Label>
-                            <Input
-                              id="name"
-                              value={newProduct.name}
-                              onChange={(e) => setNewProduct((prev) => ({ ...prev, name: e.target.value }))}
-                              placeholder="أدخل اسم المنتج"
-                            />
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <Label htmlFor="price">السعر</Label>
-                              <Input
-                                id="price"
-                                type="number"
-                                value={newProduct.price}
-                                onChange={(e) => setNewProduct((prev) => ({ ...prev, price: Number(e.target.value) }))}
-                                placeholder="0"
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="originalPrice">السعر الأصلي (اختياري)</Label>
-                              <Input
-                                id="originalPrice"
-                                type="number"
-                                value={newProduct.originalPrice}
-                                onChange={(e) =>
-                                  setNewProduct((prev) => ({ ...prev, originalPrice: Number(e.target.value) }))
-                                }
-                                placeholder="0"
-                              />
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <Label htmlFor="brand">العلامة التجارية</Label>
-                              <Input
-                                id="brand"
-                                value={newProduct.brand}
-                                onChange={(e) => setNewProduct((prev) => ({ ...prev, brand: e.target.value }))}
-                                placeholder="أدخل العلامة التجارية"
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="category">الفئة</Label>
-                              <Select
-                                value={newProduct.category}
-                                onValueChange={(value) => setNewProduct((prev) => ({ ...prev, category: value }))}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue placeholder="اختر الفئة" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {categories.map((category) => (
-                                    <SelectItem key={category.id} value={category.name}>
-                                      {category.name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </div>
-
-                          <div>
-                            <Label htmlFor="image">رابط الصورة</Label>
-                            <Input
-                              id="image"
-                              value={newProduct.image}
-                              onChange={(e) => setNewProduct((prev) => ({ ...prev, image: e.target.value }))}
-                              placeholder="/images/product.png"
-                            />
-                          </div>
-
-                          <div>
-                            <Label htmlFor="description">الوصف</Label>
-                            <Textarea
-                              id="description"
-                              value={newProduct.description}
-                              onChange={(e) => setNewProduct((prev) => ({ ...prev, description: e.target.value }))}
-                              placeholder="أدخل وصف المنتج"
-                              rows={3}
-                            />
-                          </div>
-                        </div>
-
-                        {/* Right Column */}
-                        <div className="space-y-4">
-                          <div>
-                            <Label>المميزات</Label>
-                            {newProduct.features.map((feature, index) => (
-                              <div key={index} className="flex items-center space-x-2 space-x-reverse mt-2">
-                                <Input
-                                  value={feature}
-                                  onChange={(e) => updateFeature(index, e.target.value)}
-                                  placeholder="أدخل ميزة المنتج"
-                                />
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => removeFeature(index)}
-                                  disabled={newProduct.features.length === 1}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            ))}
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={addFeature}
-                              className="mt-2 bg-transparent"
-                            >
-                              <Plus className="h-4 w-4 ml-2" />
-                              إضافة ميزة
-                            </Button>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <Label htmlFor="badge">الشارة (اختياري)</Label>
-                              <Input
-                                id="badge"
-                                value={newProduct.badge}
-                                onChange={(e) => setNewProduct((prev) => ({ ...prev, badge: e.target.value }))}
-                                placeholder="الأكثر مبيعاً، جديد، مميز"
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="rating">التقييم</Label>
-                              <Input
-                                id="rating"
-                                type="number"
-                                min="1"
-                                max="5"
-                                step="0.1"
-                                value={newProduct.rating}
-                                onChange={(e) => setNewProduct((prev) => ({ ...prev, rating: Number(e.target.value) }))}
-                              />
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <Label htmlFor="reviews">عدد التقييمات</Label>
-                              <Input
-                                id="reviews"
-                                type="number"
-                                value={newProduct.reviews}
-                                onChange={(e) =>
-                                  setNewProduct((prev) => ({ ...prev, reviews: Number(e.target.value) }))
-                                }
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="inStock">حالة المخزون</Label>
-                              <Select
-                                value={newProduct.inStock.toString()}
-                                onValueChange={(value) =>
-                                  setNewProduct((prev) => ({ ...prev, inStock: value === "true" }))
-                                }
-                              >
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="true">متوفر</SelectItem>
-                                  <SelectItem value="false">نفد من المخزون</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </div>
-
-                          <div>
-                            <Label htmlFor="isFeatured">منتج مميز</Label>
-                            <Select
-                              value={newProduct.isFeatured.toString()}
-                              onValueChange={(value) =>
-                                setNewProduct((prev) => ({ ...prev, isFeatured: value === "true" }))
-                              }
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="true">نعم</SelectItem>
-                                <SelectItem value="false">لا</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex justify-end space-x-2 space-x-reverse mt-6">
-                        <Button
-                          variant="outline"
-                          onClick={() => {
-                            setIsAddProductOpen(false)
-                            setEditingProduct(null)
-                            resetProductForm()
-                          }}
-                        >
-                          إلغاء
-                        </Button>
-                        <Button
-                          onClick={editingProduct ? handleUpdateProduct : handleAddProduct}
-                          className="bg-red-600 hover:bg-red-700"
-                        >
-                          {editingProduct ? "تحديث المنتج" : "إضافة المنتج"}
-                        </Button>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
+                  <Button onClick={() => setIsAddingProduct(true)} className="bg-easyoft-light hover:bg-easyoft-dark">
+                    <Plus className="h-4 w-4 ml-2" />
+                    إضافة منتج جديد
+                  </Button>
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
+                <div className="grid gap-4">
                   {products.map((product) => (
                     <div key={product.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center space-x-4 space-x-reverse">
-                        <div className="relative w-16 h-16">
-                          <Image
-                            src={product.image || "/placeholder.svg"}
-                            alt={product.name}
-                            fill
-                            className="object-cover rounded"
-                          />
-                        </div>
+                      <div className="flex items-center gap-4">
+                        <Image
+                          src={product.image || "/placeholder.svg"}
+                          alt={product.name}
+                          width={60}
+                          height={60}
+                          className="rounded-lg"
+                        />
                         <div>
                           <h3 className="font-semibold">{product.name}</h3>
-                          <p className="text-sm text-gray-600">
-                            {product.category} • {product.brand}
-                          </p>
-                          <div className="flex items-center space-x-2 space-x-reverse mt-1">
-                            <span className="font-bold text-red-600">{product.price.toLocaleString()} ر.س</span>
-                            {product.badge && (
-                              <Badge variant="secondary" className="text-xs">
-                                {product.badge}
-                              </Badge>
-                            )}
-                            <Badge variant={product.inStock ? "default" : "destructive"} className="text-xs">
-                              {product.inStock ? "متوفر" : "نفد"}
+                          <p className="text-sm text-gray-600">{product.category}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="font-bold text-easyoft-dark">{product.price} ر.س</span>
+                            {product.badge && <Badge className="bg-easyoft-aqua text-white">{product.badge}</Badge>}
+                            <Badge variant={product.inStock ? "default" : "destructive"}>
+                              {product.inStock ? "متوفر" : "نفد المخزون"}
                             </Badge>
-                            {product.isFeatured && (
-                              <Badge variant="outline" className="text-xs text-yellow-600 border-yellow-200">
-                                مميز
-                              </Badge>
-                            )}
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center space-x-2 space-x-reverse">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            handleEditProduct(product)
-                            setIsAddProductOpen(true)
-                          }}
-                        >
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" onClick={() => setEditingProduct(product)}>
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDeleteProduct(product.id)}
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button size="sm" variant="destructive">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>تأكيد الحذف</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                هل أنت متأكد من حذف هذا المنتج؟ لا يمكن التراجع عن هذا الإجراء.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDeleteProduct(product.id)}>حذف</AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
                     </div>
                   ))}
@@ -643,208 +316,62 @@ export default function AdminDashboard() {
           <TabsContent value="categories">
             <Card>
               <CardHeader>
-                <div className="flex items-center justify-between">
+                <div className="flex justify-between items-center">
                   <div>
-                    <CardTitle>إدارة الأقسام الرئيسية</CardTitle>
-                    <CardDescription>إضافة وتعديل وحذف أقسام المنتجات</CardDescription>
+                    <CardTitle>إدارة الفئات</CardTitle>
+                    <CardDescription>إضافة وتعديل وحذف فئات المنتجات</CardDescription>
                   </div>
-                  <Dialog open={isAddCategoryOpen} onOpenChange={setIsAddCategoryOpen}>
-                    <DialogTrigger asChild>
-                      <Button className="bg-red-600 hover:bg-red-700">
-                        <Plus className="h-4 w-4 ml-2" />
-                        إضافة قسم جديد
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-2xl" dir="rtl">
-                      <DialogHeader>
-                        <DialogTitle>{editingCategory ? "تعديل القسم" : "إضافة قسم جديد"}</DialogTitle>
-                        <DialogDescription>
-                          {editingCategory ? "تعديل تفاصيل القسم" : "أدخل تفاصيل القسم الجديد"}
-                        </DialogDescription>
-                      </DialogHeader>
-
-                      <div className="space-y-4">
-                        <div>
-                          <Label htmlFor="categoryName">اسم القسم</Label>
-                          <Input
-                            id="categoryName"
-                            value={newCategory.name}
-                            onChange={(e) => {
-                              const name = e.target.value
-                              setNewCategory((prev) => ({
-                                ...prev,
-                                name,
-                                slug: generateSlug(name),
-                              }))
-                            }}
-                            placeholder="أدخل اسم القسم"
-                          />
-                        </div>
-
-                        <div>
-                          <Label htmlFor="categorySlug">الرابط (Slug)</Label>
-                          <Input
-                            id="categorySlug"
-                            value={newCategory.slug}
-                            onChange={(e) => setNewCategory((prev) => ({ ...prev, slug: e.target.value }))}
-                            placeholder="category-slug"
-                          />
-                        </div>
-
-                        <div>
-                          <Label htmlFor="categoryDescription">الوصف</Label>
-                          <Textarea
-                            id="categoryDescription"
-                            value={newCategory.description}
-                            onChange={(e) => setNewCategory((prev) => ({ ...prev, description: e.target.value }))}
-                            placeholder="أدخل وصف القسم"
-                            rows={3}
-                          />
-                        </div>
-
-                        <div>
-                          <Label htmlFor="categoryImage">رابط الصورة</Label>
-                          <Input
-                            id="categoryImage"
-                            value={newCategory.image}
-                            onChange={(e) => setNewCategory((prev) => ({ ...prev, image: e.target.value }))}
-                            placeholder="/images/category.png"
-                          />
-                        </div>
-
-                        <div>
-                          <Label htmlFor="productCount">عدد المنتجات</Label>
-                          <Input
-                            id="productCount"
-                            type="number"
-                            value={newCategory.productCount}
-                            onChange={(e) =>
-                              setNewCategory((prev) => ({ ...prev, productCount: Number(e.target.value) }))
-                            }
-                            placeholder="0"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="flex justify-end space-x-2 space-x-reverse mt-6">
-                        <Button
-                          variant="outline"
-                          onClick={() => {
-                            setIsAddCategoryOpen(false)
-                            setEditingCategory(null)
-                            resetCategoryForm()
-                          }}
-                        >
-                          إلغاء
-                        </Button>
-                        <Button
-                          onClick={editingCategory ? handleUpdateCategory : handleAddCategory}
-                          className="bg-red-600 hover:bg-red-700"
-                        >
-                          {editingCategory ? "تحديث القسم" : "إضافة القسم"}
-                        </Button>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
+                  <Button onClick={() => setIsAddingCategory(true)} className="bg-easyoft-light hover:bg-easyoft-dark">
+                    <Plus className="h-4 w-4 ml-2" />
+                    إضافة فئة جديدة
+                  </Button>
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid gap-4">
                   {categories.map((category) => (
-                    <Card key={category.id} className="overflow-hidden">
-                      <div className="relative h-32">
+                    <div key={category.id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex items-center gap-4">
                         <Image
                           src={category.image || "/placeholder.svg"}
                           alt={category.name}
-                          fill
-                          className="object-cover"
+                          width={60}
+                          height={60}
+                          className="rounded-lg"
                         />
-                      </div>
-                      <CardContent className="p-4">
-                        <h3 className="font-semibold mb-2">{category.name}</h3>
-                        <p className="text-sm text-gray-600 mb-2">{category.description}</p>
-                        <div className="flex items-center justify-between">
-                          <Badge variant="outline" className="text-xs">
+                        <div>
+                          <h3 className="font-semibold">{category.name}</h3>
+                          <p className="text-sm text-gray-600">{category.description}</p>
+                          <Badge className="mt-1 bg-easyoft-aqua/10 text-easyoft-dark">
                             {category.productCount} منتج
                           </Badge>
-                          <div className="flex items-center space-x-2 space-x-reverse">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                handleEditCategory(category)
-                                setIsAddCategoryOpen(true)
-                              }}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleDeleteCategory(category.id)}
-                              className="text-red-600 hover:text-red-700"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Featured Products Tab */}
-          <TabsContent value="featured">
-            <Card>
-              <CardHeader>
-                <CardTitle>إدارة المنتجات المميزة</CardTitle>
-                <CardDescription>تحكم في المنتجات التي تظهر في قسم المنتجات المميزة</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {products.map((product) => (
-                    <div key={product.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center space-x-4 space-x-reverse">
-                        <div className="relative w-16 h-16">
-                          <Image
-                            src={product.image || "/placeholder.svg"}
-                            alt={product.name}
-                            fill
-                            className="object-cover rounded"
-                          />
-                        </div>
-                        <div>
-                          <h3 className="font-semibold">{product.name}</h3>
-                          <p className="text-sm text-gray-600">
-                            {product.category} • {product.brand}
-                          </p>
-                          <div className="flex items-center space-x-2 space-x-reverse mt-1">
-                            <span className="font-bold text-red-600">{product.price.toLocaleString()} ر.س</span>
-                            {product.badge && (
-                              <Badge variant="secondary" className="text-xs">
-                                {product.badge}
-                              </Badge>
-                            )}
-                          </div>
                         </div>
                       </div>
-                      <div className="flex items-center space-x-4 space-x-reverse">
-                        <Badge variant={product.isFeatured ? "default" : "outline"} className="text-xs">
-                          {product.isFeatured ? "مميز" : "غير مميز"}
-                        </Badge>
-                        <Button
-                          variant={product.isFeatured ? "destructive" : "default"}
-                          size="sm"
-                          onClick={() => {
-                            db.updateProduct(product.id, { isFeatured: !product.isFeatured })
-                            setProducts(db.getProducts())
-                          }}
-                        >
-                          {product.isFeatured ? "إزالة من المميزة" : "إضافة للمميزة"}
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" onClick={() => setEditingCategory(category)}>
+                          <Edit className="h-4 w-4" />
                         </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button size="sm" variant="destructive">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>تأكيد الحذف</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                هل أنت متأكد من حذف هذه الفئة؟ لا يمكن التراجع عن هذا الإجراء.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDeleteCategory(category.id)}>
+                                حذف
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
                     </div>
                   ))}
@@ -858,85 +385,569 @@ export default function AdminDashboard() {
             <Card>
               <CardHeader>
                 <CardTitle>إعدادات الموقع</CardTitle>
-                <CardDescription>تحكم في النصوص والصور الرئيسية للموقع</CardDescription>
+                <CardDescription>تخصيص محتوى الصفحة الرئيسية</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">قسم البطل (Hero Section)</h3>
-
-                  <div>
-                    <Label htmlFor="heroTitle">العنوان الرئيسي</Label>
-                    <Input
-                      id="heroTitle"
-                      value={tempSiteSettings.heroTitle}
-                      onChange={(e) => setTempSiteSettings((prev) => ({ ...prev, heroTitle: e.target.value }))}
-                      placeholder="حلول الأمان المتقدمة"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="heroSubtitle">النص الفرعي</Label>
-                    <Textarea
-                      id="heroSubtitle"
-                      value={tempSiteSettings.heroSubtitle}
-                      onChange={(e) => setTempSiteSettings((prev) => ({ ...prev, heroSubtitle: e.target.value }))}
-                      placeholder="نقدم أحدث تقنيات الأمان والمنازل الذكية..."
-                      rows={3}
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="heroBackground">صورة الخلفية</Label>
-                    <Input
-                      id="heroBackground"
-                      value={tempSiteSettings.heroBackgroundImage}
-                      onChange={(e) =>
-                        setTempSiteSettings((prev) => ({ ...prev, heroBackgroundImage: e.target.value }))
-                      }
-                      placeholder="/images/hero-security.png"
-                    />
-                  </div>
-                </div>
-
-                <div className="border-t pt-6 space-y-4">
-                  <h3 className="text-lg font-semibold">قسم المنتجات المميزة</h3>
-
-                  <div>
-                    <Label htmlFor="featuredTitle">عنوان القسم</Label>
-                    <Input
-                      id="featuredTitle"
-                      value={tempSiteSettings.featuredSectionTitle}
-                      onChange={(e) =>
-                        setTempSiteSettings((prev) => ({ ...prev, featuredSectionTitle: e.target.value }))
-                      }
-                      placeholder="المنتجات المميزة"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="featuredSubtitle">النص الفرعي</Label>
-                    <Input
-                      id="featuredSubtitle"
-                      value={tempSiteSettings.featuredSectionSubtitle}
-                      onChange={(e) =>
-                        setTempSiteSettings((prev) => ({ ...prev, featuredSectionSubtitle: e.target.value }))
-                      }
-                      placeholder="أحدث وأفضل منتجاتنا في مجال الأمان والتقنيات الذكية"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-end">
-                  <Button onClick={handleUpdateSiteSettings} className="bg-red-600 hover:bg-red-700">
-                    <Settings className="h-4 w-4 ml-2" />
-                    حفظ الإعدادات
-                  </Button>
-                </div>
+              <CardContent>
+                <SiteSettingsForm settings={siteSettings} onSave={handleSaveSiteSettings} />
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Contact Info Tab */}
+          <TabsContent value="contact">
+            <Card>
+              <CardHeader>
+                <CardTitle>معلومات التواصل</CardTitle>
+                <CardDescription>إدارة معلومات التواصل والشبكات الاجتماعية</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ContactInfoForm contactInfo={contactInfo} onSave={handleSaveContactInfo} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Statistics Tab */}
+          <TabsContent value="stats">
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">إجمالي المنتجات</CardTitle>
+                  <Package className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-easyoft-dark">{products.length}</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">الفئات</CardTitle>
+                  <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-easyoft-dark">{categories.length}</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">المنتجات المميزة</CardTitle>
+                  <Package className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-easyoft-dark">
+                    {products.filter((p) => p.isFeatured).length}
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">المنتجات المتوفرة</CardTitle>
+                  <Package className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-easyoft-dark">{products.filter((p) => p.inStock).length}</div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
         </Tabs>
       </div>
+
+      {/* Product Form Modal */}
+      {(editingProduct || isAddingProduct) && (
+        <ProductForm
+          product={editingProduct}
+          categories={categories}
+          onSave={handleSaveProduct}
+          onCancel={() => {
+            setEditingProduct(null)
+            setIsAddingProduct(false)
+          }}
+        />
+      )}
+
+      {/* Category Form Modal */}
+      {(editingCategory || isAddingCategory) && (
+        <CategoryForm
+          category={editingCategory}
+          onSave={handleSaveCategory}
+          onCancel={() => {
+            setEditingCategory(null)
+            setIsAddingCategory(false)
+          }}
+        />
+      )}
     </div>
+  )
+}
+
+// Product Form Component
+function ProductForm({
+  product,
+  categories,
+  onSave,
+  onCancel,
+}: {
+  product: Product | null
+  categories: Category[]
+  onSave: (product: Omit<Product, "id"> | Product) => void
+  onCancel: () => void
+}) {
+  const [formData, setFormData] = useState<Omit<Product, "id">>({
+    name: product?.name || "",
+    price: product?.price || 0,
+    originalPrice: product?.originalPrice || 0,
+    image: product?.image || "/placeholder.svg?height=300&width=300&text=منتج",
+    category: product?.category || "",
+    brand: product?.brand || "",
+    rating: product?.rating || 5,
+    reviews: product?.reviews || 0,
+    features: product?.features || [],
+    inStock: product?.inStock ?? true,
+    badge: product?.badge || "",
+    description: product?.description || "",
+    specifications: product?.specifications || {},
+    isFeatured: product?.isFeatured ?? false,
+  })
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (product) {
+      onSave({ ...formData, id: product.id })
+    } else {
+      onSave(formData)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-semibold text-easyoft-dark">{product ? "تعديل المنتج" : "إضافة منتج جديد"}</h2>
+            <Button variant="ghost" size="sm" onClick={onCancel}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="name">اسم المنتج</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="brand">العلامة التجارية</Label>
+                <Input
+                  id="brand"
+                  value={formData.brand}
+                  onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <Label htmlFor="price">السعر</Label>
+                <Input
+                  id="price"
+                  type="number"
+                  value={formData.price}
+                  onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) })}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="originalPrice">السعر الأصلي (اختياري)</Label>
+                <Input
+                  id="originalPrice"
+                  type="number"
+                  value={formData.originalPrice || ""}
+                  onChange={(e) => setFormData({ ...formData, originalPrice: Number(e.target.value) || undefined })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="rating">التقييم</Label>
+                <Input
+                  id="rating"
+                  type="number"
+                  min="1"
+                  max="5"
+                  step="0.1"
+                  value={formData.rating}
+                  onChange={(e) => setFormData({ ...formData, rating: Number(e.target.value) })}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="category">الفئة</Label>
+                <Select
+                  value={formData.category}
+                  onValueChange={(value) => setFormData({ ...formData, category: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="اختر الفئة" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((category) => (
+                      <SelectItem key={category.id} value={category.name}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="badge">الشارة (اختياري)</Label>
+                <Input
+                  id="badge"
+                  value={formData.badge || ""}
+                  onChange={(e) => setFormData({ ...formData, badge: e.target.value || null })}
+                  placeholder="مثل: جديد، الأكثر مبيعاً"
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="description">الوصف</Label>
+              <Textarea
+                id="description"
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                rows={3}
+                required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="features">المميزات (مفصولة بفاصلة)</Label>
+              <Input
+                id="features"
+                value={formData.features.join(", ")}
+                onChange={(e) =>
+                  setFormData({ ...formData, features: e.target.value.split(", ").filter((f) => f.trim()) })
+                }
+                placeholder="مميزة 1, مميزة 2, مميزة 3"
+              />
+            </div>
+
+            <div className="flex items-center gap-4">
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="inStock"
+                  checked={formData.inStock}
+                  onCheckedChange={(checked) => setFormData({ ...formData, inStock: checked })}
+                />
+                <Label htmlFor="inStock">متوفر في المخزون</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="isFeatured"
+                  checked={formData.isFeatured}
+                  onCheckedChange={(checked) => setFormData({ ...formData, isFeatured: checked })}
+                />
+                <Label htmlFor="isFeatured">منتج مميز</Label>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button type="button" variant="outline" onClick={onCancel}>
+                إلغاء
+              </Button>
+              <Button type="submit" className="bg-easyoft-light hover:bg-easyoft-dark">
+                <Save className="h-4 w-4 ml-2" />
+                حفظ
+              </Button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Category Form Component
+function CategoryForm({
+  category,
+  onSave,
+  onCancel,
+}: {
+  category: Category | null
+  onSave: (category: Omit<Category, "id"> | Category) => void
+  onCancel: () => void
+}) {
+  const [formData, setFormData] = useState<Omit<Category, "id">>({
+    name: category?.name || "",
+    description: category?.description || "",
+    image: category?.image || "/placeholder.svg?height=200&width=300&text=فئة",
+    slug: category?.slug || "",
+    productCount: category?.productCount || 0,
+  })
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (category) {
+      onSave({ ...formData, id: category.id })
+    } else {
+      onSave(formData)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-lg max-w-md w-full">
+        <div className="p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-semibold text-easyoft-dark">{category ? "تعديل الفئة" : "إضافة فئة جديدة"}</h2>
+            <Button variant="ghost" size="sm" onClick={onCancel}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <Label htmlFor="name">اسم الفئة</Label>
+              <Input
+                id="name"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="slug">الرابط (slug)</Label>
+              <Input
+                id="slug"
+                value={formData.slug}
+                onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+                placeholder="category-slug"
+                required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="description">الوصف</Label>
+              <Textarea
+                id="description"
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                rows={3}
+                required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="productCount">عدد المنتجات</Label>
+              <Input
+                id="productCount"
+                type="number"
+                value={formData.productCount}
+                onChange={(e) => setFormData({ ...formData, productCount: Number(e.target.value) })}
+                required
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button type="button" variant="outline" onClick={onCancel}>
+                إلغاء
+              </Button>
+              <Button type="submit" className="bg-easyoft-light hover:bg-easyoft-dark">
+                <Save className="h-4 w-4 ml-2" />
+                حفظ
+              </Button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Site Settings Form Component
+function SiteSettingsForm({
+  settings,
+  onSave,
+}: {
+  settings: SiteSettings
+  onSave: (settings: SiteSettings) => void
+}) {
+  const [formData, setFormData] = useState<SiteSettings>(settings)
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    onSave(formData)
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold text-easyoft-dark">قسم البطل (Hero Section)</h3>
+        <div>
+          <Label htmlFor="heroTitle">عنوان البطل</Label>
+          <Input
+            id="heroTitle"
+            value={formData.heroTitle}
+            onChange={(e) => setFormData({ ...formData, heroTitle: e.target.value })}
+            required
+          />
+        </div>
+        <div>
+          <Label htmlFor="heroSubtitle">العنوان الفرعي</Label>
+          <Textarea
+            id="heroSubtitle"
+            value={formData.heroSubtitle}
+            onChange={(e) => setFormData({ ...formData, heroSubtitle: e.target.value })}
+            rows={3}
+            required
+          />
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold text-easyoft-dark">قسم المنتجات المميزة</h3>
+        <div>
+          <Label htmlFor="featuredSectionTitle">عنوان القسم</Label>
+          <Input
+            id="featuredSectionTitle"
+            value={formData.featuredSectionTitle}
+            onChange={(e) => setFormData({ ...formData, featuredSectionTitle: e.target.value })}
+            required
+          />
+        </div>
+        <div>
+          <Label htmlFor="featuredSectionSubtitle">العنوان الفرعي</Label>
+          <Textarea
+            id="featuredSectionSubtitle"
+            value={formData.featuredSectionSubtitle}
+            onChange={(e) => setFormData({ ...formData, featuredSectionSubtitle: e.target.value })}
+            rows={2}
+            required
+          />
+        </div>
+      </div>
+
+      <Button type="submit" className="bg-easyoft-light hover:bg-easyoft-dark">
+        <Save className="h-4 w-4 ml-2" />
+        حفظ الإعدادات
+      </Button>
+    </form>
+  )
+}
+
+// Contact Info Form Component
+function ContactInfoForm({
+  contactInfo,
+  onSave,
+}: {
+  contactInfo: ContactInfo
+  onSave: (info: ContactInfo) => void
+}) {
+  const [formData, setFormData] = useState<ContactInfo>(contactInfo)
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    onSave(formData)
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold text-easyoft-dark">معلومات التواصل الأساسية</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="phone">رقم الهاتف</Label>
+            <Input
+              id="phone"
+              value={formData.phone}
+              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+              required
+            />
+          </div>
+          <div>
+            <Label htmlFor="email">البريد الإلكتروني</Label>
+            <Input
+              id="email"
+              type="email"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              required
+            />
+          </div>
+        </div>
+        <div>
+          <Label htmlFor="address">العنوان</Label>
+          <Input
+            id="address"
+            value={formData.address}
+            onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+            required
+          />
+        </div>
+        <div>
+          <Label htmlFor="workingHours">ساعات العمل</Label>
+          <Input
+            id="workingHours"
+            value={formData.workingHours}
+            onChange={(e) => setFormData({ ...formData, workingHours: e.target.value })}
+            required
+          />
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold text-easyoft-dark">الشبكات الاجتماعية</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="whatsapp">واتساب</Label>
+            <Input
+              id="whatsapp"
+              value={formData.whatsapp || ""}
+              onChange={(e) => setFormData({ ...formData, whatsapp: e.target.value })}
+              placeholder="+966 50 123 4567"
+            />
+          </div>
+          <div>
+            <Label htmlFor="facebook">فيسبوك</Label>
+            <Input
+              id="facebook"
+              value={formData.facebook || ""}
+              onChange={(e) => setFormData({ ...formData, facebook: e.target.value })}
+              placeholder="https://facebook.com/username"
+            />
+          </div>
+          <div>
+            <Label htmlFor="twitter">تويتر</Label>
+            <Input
+              id="twitter"
+              value={formData.twitter || ""}
+              onChange={(e) => setFormData({ ...formData, twitter: e.target.value })}
+              placeholder="https://twitter.com/username"
+            />
+          </div>
+          <div>
+            <Label htmlFor="instagram">إنستغرام</Label>
+            <Input
+              id="instagram"
+              value={formData.instagram || ""}
+              onChange={(e) => setFormData({ ...formData, instagram: e.target.value })}
+              placeholder="https://instagram.com/username"
+            />
+          </div>
+        </div>
+      </div>
+
+      <Button type="submit" className="bg-easyoft-light hover:bg-easyoft-dark">
+        <Save className="h-4 w-4 ml-2" />
+        حفظ معلومات التواصل
+      </Button>
+    </form>
   )
 }
