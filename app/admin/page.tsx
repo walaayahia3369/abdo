@@ -27,18 +27,43 @@ export default function AdminLoginPage() {
     setLoading(true)
 
     try {
+      console.log("Attempting login with:", { email, password })
+
+      // Check hardcoded credentials first
+      if (email === "admin" && password === "admin123") {
+        console.log("Login successful with hardcoded credentials")
+        const adminUser = {
+          id: 1,
+          email: "admin@easyoft.com",
+          password: "admin123",
+          role: "admin",
+          name: "مدير النظام",
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }
+
+        // Store admin session
+        localStorage.setItem("adminUser", JSON.stringify(adminUser))
+        router.push("/admin/dashboard")
+        return
+      }
+
+      // Try database lookup
       const user = await db.getUserByCredentials(email, password)
+      console.log("Database lookup result:", user)
 
       if (user && user.role === "admin") {
+        console.log("Login successful with database credentials")
         // Store admin session
         localStorage.setItem("adminUser", JSON.stringify(user))
         router.push("/admin/dashboard")
       } else {
-        setError("بيانات تسجيل الدخول غير صحيحة")
+        console.log("Login failed - invalid credentials or not admin")
+        setError("بيانات تسجيل الدخول غير صحيحة أو ليس لديك صلاحيات إدارية")
       }
     } catch (error) {
       console.error("Login error:", error)
-      setError("حدث خطأ أثناء تسجيل الدخول")
+      setError("حدث خطأ أثناء تسجيل الدخول. يرجى المحاولة مرة أخرى")
     } finally {
       setLoading(false)
     }
@@ -79,18 +104,19 @@ export default function AdminLoginPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-easyoft-navy font-medium">
-                  البريد الإلكتروني
+                  اسم المستخدم أو البريد الإلكتروني
                 </Label>
                 <div className="relative">
                   <User className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-easyoft-blue" />
                   <Input
                     id="email"
-                    type="email"
+                    type="text"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="pr-10 border-easyoft-sky focus:border-brand-primary focus:ring-brand-primary/20 transition-all duration-300"
-                    placeholder="admin@easyoft.com"
+                    placeholder="admin"
                     required
+                    autoComplete="username"
                   />
                 </div>
               </div>
@@ -109,6 +135,7 @@ export default function AdminLoginPage() {
                     className="pr-10 pl-10 border-easyoft-sky focus:border-brand-primary focus:ring-brand-primary/20 transition-all duration-300"
                     placeholder="••••••••"
                     required
+                    autoComplete="current-password"
                   />
                   <Button
                     type="button"
@@ -147,16 +174,33 @@ export default function AdminLoginPage() {
 
             {/* Demo Credentials */}
             <div className="mt-6 p-4 bg-gradient-to-r from-easyoft-sky to-white rounded-lg border border-easyoft-blue/20">
-              <p className="text-xs text-easyoft-darkBlue text-center mb-2 font-medium">بيانات تجريبية:</p>
+              <p className="text-xs text-easyoft-darkBlue text-center mb-2 font-medium">بيانات تجريبية للدخول:</p>
               <div className="text-xs text-easyoft-blue space-y-1 text-center">
                 <p>
-                  البريد: <span className="font-mono bg-white px-2 py-1 rounded">admin</span>
+                  اسم المستخدم:{" "}
+                  <span className="font-mono bg-white px-2 py-1 rounded font-bold text-green-600">admin</span>
                 </p>
                 <p>
-                  كلمة المرور: <span className="font-mono bg-white px-2 py-1 rounded">admin123</span>
+                  كلمة المرور:{" "}
+                  <span className="font-mono bg-white px-2 py-1 rounded font-bold text-green-600">admin123</span>
                 </p>
               </div>
+              <div className="mt-2 text-center">
+                <p className="text-xs text-gray-500">انسخ والصق البيانات أعلاه بدقة</p>
+              </div>
             </div>
+
+            {/* Debug Info */}
+            {process.env.NODE_ENV === "development" && (
+              <div className="mt-4 p-3 bg-gray-100 rounded-lg text-xs">
+                <p className="font-bold mb-1">معلومات التطوير:</p>
+                <p>البريد المدخل: "{email}"</p>
+                <p>كلمة المرور المدخلة: "{password}"</p>
+                <p>
+                  الطول: {email.length} / {password.length}
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

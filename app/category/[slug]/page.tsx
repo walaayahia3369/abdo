@@ -1,199 +1,296 @@
 "use client"
-import { notFound } from "next/navigation"
-import { db } from "@/lib/db"
-import Image from "next/image"
-import Link from "next/link"
+
+import { useState, useEffect } from "react"
+import { useParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { ShoppingCart, Star } from "lucide-react"
-import { SearchDialog } from "@/components/search-dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Star, ShoppingCart, Heart, Eye, Grid, List } from "lucide-react"
+import Image from "next/image"
+import Link from "next/link"
+import { db, type Product, type Category } from "@/lib/db"
 import { useCart } from "@/hooks/use-cart"
+import { toast } from "sonner"
 
-interface CategoryPageProps {
-  params: {
-    slug: string
-  }
-}
+export default function CategoryPage() {
+  const params = useParams()
+  const categorySlug = params.slug as string
 
-export default function CategoryPage({ params }: CategoryPageProps) {
-  const { cart, addToCart } = useCart()
+  const [category, setCategory] = useState<Category | null>(null)
+  const [products, setProducts] = useState<Product[]>([])
+  const [loading, setLoading] = useState(true)
+  const [sortBy, setSortBy] = useState("newest")
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
 
-  const handleAddToCart = (product: any) => {
-    addToCart({
-      id: product.id,
+  const { addItem } = useCart()
+
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!categorySlug) return
+
+      setLoading(true)
+      try {
+        const [categoryData, productsData] = await Promise.all([
+          db.getCategoryBySlug(categorySlug),
+          db.getProductsByCategory(categorySlug),
+        ])
+
+        setCategory(categoryData)
+        setProducts(productsData)
+      } catch (error) {
+        console.error("Error fetching category data:", error)
+        toast.error("حدث خطأ في تحميل البيانات")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [categorySlug])
+
+  const handleAddToCart = (product: Product) => {
+    addItem({
+      id: product.id.toString(),
       name: product.name,
       price: product.price,
       image: product.image,
-      category: product.category,
-      brand: product.brand,
+      quantity: 1,
     })
+    toast.success(`تم إضافة ${product.name} إلى السلة`)
   }
 
-  const category = db.getCategoryBySlug(params.slug)
+  // Sort products
+  const sortedProducts = [...products].sort((a, b) => {
+    switch (sortBy) {
+      case "price-low":
+        return a.price - b.price
+      case "price-high":
+        return b.price - a.price
+      case "name":
+        return a.name.localeCompare(b.name, "ar")
+      case "rating":
+        return b.rating - a.rating
+      case "newest":
+      default:
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    }
+  })
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50" dir="rtl">
+        <div className="container mx-auto px-4 py-8">
+          <div className="animate-pulse">
+            <div className="h-8 bg-gray-200 rounded w-1/4 mb-6"></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {[...Array(8)].map((_, i) => (
+                <div key={i} className="bg-white rounded-lg p-4">
+                  <div className="h-48 bg-gray-200 rounded mb-4"></div>
+                  <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                  <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   if (!category) {
-    notFound()
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center" dir="rtl">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">الفئة غير موجودة</h1>
+          <p className="text-gray-600 mb-4">لم نتمكن من العثور على الفئة المطلوبة</p>
+          <Button asChild>
+            <Link href="/products">العودة للمنتجات</Link>
+          </Button>
+        </div>
+      </div>
+    )
   }
-
-  const products = db.getProductsByCategory(category.name)
-  const categories = db.getCategories()
 
   return (
     <div className="min-h-screen bg-gray-50" dir="rtl">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between h-16">
-            <Link href="/" className="flex items-center space-x-4 space-x-reverse">
-              <Image src="/easyoft-logo.png" alt="EASYoft Logo" width={120} height={60} className="h-12 w-auto" />
-            </Link>
-
-            <nav className="hidden lg:flex items-center space-x-6 space-x-reverse">
-              <Link href="/" className="text-gray-700 hover:text-brand-primary">
-                الرئيسية
-              </Link>
-              {categories.map((cat) => (
-                <Link
-                  key={cat.id}
-                  href={`/category/${cat.slug}`}
-                  className={`hover:text-brand-primary whitespace-nowrap ${cat.slug === params.slug ? "text-brand-primary font-medium" : "text-gray-700"}`}
-                >
-                  {cat.name}
-                </Link>
-              ))}
-              <Link href="/products" className="text-gray-700 hover:text-brand-primary">
-                كل المنتجات
-              </Link>
-              <Link href="/about" className="text-gray-700 hover:text-brand-primary">
-                من نحن
-              </Link>
-              <Link href="/contact" className="text-gray-700 hover:text-brand-primary">
-                تواصل معنا
-              </Link>
-            </nav>
-
-            <div className="flex items-center space-x-4 space-x-reverse">
-              <SearchDialog />
-              <Link href="/cart">
-                <Button variant="ghost" size="icon" className="relative">
-                  <ShoppingCart className="h-5 w-5" />
-                  <span className="absolute -top-2 -right-2 bg-brand-primary text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                    {cart.itemCount}
-                  </span>
-                </Button>
-              </Link>
-              <span className="text-sm font-medium">{cart.total.toLocaleString()} ر.س</span>
-            </div>
-          </div>
-        </div>
-      </header>
-
       <div className="container mx-auto px-4 py-8">
         {/* Breadcrumb */}
-        <div className="flex items-center space-x-2 space-x-reverse text-sm text-gray-600 mb-6">
-          <Link href="/" className="hover:text-brand-primary">
-            الرئيسية
-          </Link>
-          <span>/</span>
-          <span className="text-gray-900">{category.name}</span>
-        </div>
+        <nav className="mb-8">
+          <div className="flex items-center space-x-2 space-x-reverse text-sm text-gray-600">
+            <Link href="/" className="hover:text-blue-600">
+              الرئيسية
+            </Link>
+            <span>/</span>
+            <Link href="/products" className="hover:text-blue-600">
+              المنتجات
+            </Link>
+            <span>/</span>
+            <span className="text-gray-900">{category.name}</span>
+          </div>
+        </nav>
 
         {/* Category Header */}
         <div className="bg-white rounded-lg shadow-sm p-8 mb-8">
-          <div className="flex flex-col md:flex-row items-center gap-8">
-            <div className="relative w-32 h-32 flex-shrink-0">
-              <Image
-                src={category.image || "/placeholder.svg"}
-                alt={category.name}
-                fill
-                className="object-cover rounded-lg"
-              />
+          <div className="flex flex-col md:flex-row items-center gap-6">
+            <div className="w-24 h-24 relative rounded-lg overflow-hidden bg-gray-100">
+              <Image src={category.image || "/placeholder.svg"} alt={category.name} fill className="object-cover" />
             </div>
             <div className="flex-1 text-center md:text-right">
-              <h1 className="text-3xl font-bold text-gray-900 mb-4">{category.name}</h1>
-              <p className="text-gray-600 text-lg mb-4">{category.description}</p>
-              <Badge variant="outline" className="text-brand-primary border-brand-secondary">
-                {products.length} منتج متاح
-              </Badge>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">{category.name}</h1>
+              <p className="text-gray-600 mb-4">{category.description}</p>
+              <div className="flex items-center justify-center md:justify-start gap-4 text-sm text-gray-500">
+                <span>{products.length} منتج</span>
+                <span>•</span>
+                <span>تم التحديث: {new Date(category.updated_at).toLocaleDateString("ar-SA")}</span>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Products Grid */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {products.map((product) => (
-            <Card key={product.id} className="overflow-hidden hover:shadow-lg transition-all duration-300 group h-full">
-              <div className="relative h-48 overflow-hidden">
-                <Image
-                  src={product.image || "/placeholder.svg"}
-                  alt={product.name}
-                  fill
-                  className="object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-                {product.badge && (
-                  <Badge className="absolute top-2 right-2 bg-brand-primary text-white text-xs">{product.badge}</Badge>
-                )}
-                {product.originalPrice && (
-                  <div className="absolute top-2 left-2 bg-green-600 text-white px-2 py-1 rounded text-xs font-bold">
-                    وفر {(((product.originalPrice - product.price) / product.originalPrice) * 100).toFixed(0)}%
-                  </div>
-                )}
+        {/* Controls */}
+        <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <span className="text-gray-600">عرض {products.length} منتج</span>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="w-40">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="newest">الأحدث</SelectItem>
+                  <SelectItem value="price-low">السعر: من الأقل للأعلى</SelectItem>
+                  <SelectItem value="price-high">السعر: من الأعلى للأقل</SelectItem>
+                  <SelectItem value="name">الاسم</SelectItem>
+                  <SelectItem value="rating">التقييم</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <div className="flex border rounded-lg">
+                <Button
+                  variant={viewMode === "grid" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setViewMode("grid")}
+                >
+                  <Grid className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={viewMode === "list" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setViewMode("list")}
+                >
+                  <List className="h-4 w-4" />
+                </Button>
               </div>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">{product.brand}</p>
-                  <div className="flex items-center space-x-1 space-x-reverse">
-                    <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                    <span className="text-xs text-gray-600">
-                      {product.rating} ({product.reviews})
-                    </span>
-                  </div>
-                </div>
-                <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">{product.name}</h3>
-
-                <div className="mb-3">
-                  <ul className="text-xs text-gray-600 space-y-1">
-                    {product.features.slice(0, 2).map((feature, idx) => (
-                      <li key={idx} className="flex items-center">
-                        <span className="w-1 h-1 bg-brand-primary rounded-full ml-2"></span>
-                        {feature}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="flex flex-col">
-                    <div className="flex items-center space-x-2 space-x-reverse">
-                      <span className="text-lg font-bold text-brand-primary">{product.price.toLocaleString()} ر.س</span>
-                      {product.originalPrice && (
-                        <span className="text-sm text-gray-400 line-through">
-                          {product.originalPrice.toLocaleString()} ر.س
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <Button
-                    size="sm"
-                    className="bg-brand-primary hover:bg-brand-secondary text-xs px-3"
-                    onClick={() => handleAddToCart(product)}
-                  >
-                    أضف للسلة
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+            </div>
+          </div>
         </div>
 
-        {products.length === 0 && (
+        {/* Products */}
+        {products.length === 0 ? (
           <div className="text-center py-12">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">لا توجد منتجات في هذه الفئة حالياً</h3>
-            <p className="text-gray-600 mb-4">تحقق مرة أخرى قريباً أو تصفح فئات أخرى</p>
-            <Link href="/products">
-              <Button className="bg-brand-primary hover:bg-brand-secondary">تصفح كل المنتجات</Button>
-            </Link>
+            <div className="text-gray-400 mb-4">
+              <Grid className="h-16 w-16 mx-auto" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">لا توجد منتجات في هذه الفئة</h3>
+            <p className="text-gray-600">تحقق من الفئات الأخرى أو عد لاحقاً</p>
+          </div>
+        ) : (
+          <div
+            className={
+              viewMode === "grid" ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" : "space-y-4"
+            }
+          >
+            {sortedProducts.map((product) => (
+              <Card key={product.id} className="group hover:shadow-lg transition-all duration-300">
+                <CardContent className={`p-0 ${viewMode === "list" ? "flex" : ""}`}>
+                  {/* Product Image */}
+                  <div className={`relative overflow-hidden ${viewMode === "list" ? "w-48 h-48" : "aspect-square"}`}>
+                    <Image
+                      src={product.image || "/placeholder.svg"}
+                      alt={product.name}
+                      fill
+                      className="object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    {product.badge && <Badge className="absolute top-2 right-2 bg-red-500">{product.badge}</Badge>}
+                    {!product.in_stock && (
+                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                        <span className="text-white font-medium">غير متوفر</span>
+                      </div>
+                    )}
+
+                    {/* Quick Actions */}
+                    <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex flex-col gap-2">
+                        <Button size="sm" variant="secondary" className="h-8 w-8 p-0">
+                          <Heart className="h-4 w-4" />
+                        </Button>
+                        <Button size="sm" variant="secondary" className="h-8 w-8 p-0" asChild>
+                          <Link href={`/product/${product.id}`}>
+                            <Eye className="h-4 w-4" />
+                          </Link>
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Product Info */}
+                  <div className={`p-4 ${viewMode === "list" ? "flex-1" : ""}`}>
+                    <div className="mb-2">
+                      <h3 className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-2">
+                        <Link href={`/product/${product.id}`}>{product.name}</Link>
+                      </h3>
+                      <p className="text-sm text-gray-600 mt-1">{product.brand}</p>
+                    </div>
+
+                    {viewMode === "list" && (
+                      <p className="text-sm text-gray-600 mb-3 line-clamp-2">{product.description}</p>
+                    )}
+
+                    {/* Rating */}
+                    <div className="flex items-center gap-1 mb-3">
+                      <div className="flex">
+                        {[...Array(5)].map((_, i) => (
+                          <Star
+                            key={i}
+                            className={`h-4 w-4 ${
+                              i < Math.floor(product.rating) ? "text-yellow-400 fill-current" : "text-gray-300"
+                            }`}
+                          />
+                        ))}
+                      </div>
+                      <span className="text-sm text-gray-600">({product.reviews})</span>
+                    </div>
+
+                    {/* Price */}
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg font-bold text-gray-900">{product.price.toLocaleString()} ريال</span>
+                        {product.original_price && (
+                          <span className="text-sm text-gray-500 line-through">
+                            {product.original_price.toLocaleString()} ريال
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Add to Cart */}
+                    <Button
+                      onClick={() => handleAddToCart(product)}
+                      disabled={!product.in_stock}
+                      className="w-full"
+                      size="sm"
+                    >
+                      <ShoppingCart className="h-4 w-4 ml-2" />
+                      {product.in_stock ? "أضف للسلة" : "غير متوفر"}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         )}
       </div>

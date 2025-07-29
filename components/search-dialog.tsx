@@ -1,146 +1,145 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Search, X } from "lucide-react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
+import { useState } from "react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { Search, Star } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
-import { db, type Product } from "@/lib/db"
+import { db } from "@/lib/db"
 
 interface SearchDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
 export function SearchDialog({ open, onOpenChange }: SearchDialogProps) {
-  const [query, setQuery] = useState("")
-  const [results, setResults] = useState<Product[]>([])
-  const [loading, setLoading] = useState(false)
-  const [allProducts, setAllProducts] = useState<Product[]>([])
+  const [searchQuery, setSearchQuery] = useState("")
+  const [isOpen, setIsOpen] = useState(false)
 
-  // Load all products on mount
-  useEffect(() => {
-    const loadProducts = async () => {
-      const products = await db.getProducts()
-      setAllProducts(products)
+  const allProducts = db.getProducts()
+  const filteredProducts = searchQuery
+    ? allProducts
+        .filter(
+          (product) =>
+            product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            product.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            product.brand.toLowerCase().includes(searchQuery.toLowerCase()),
+        )
+        .slice(0, 6)
+    : []
+
+  const handleOpenChange = (newOpen: boolean) => {
+    setIsOpen(newOpen)
+    if (onOpenChange) {
+      onOpenChange(newOpen)
     }
-    loadProducts()
-  }, [])
-
-  // Search products when query changes
-  useEffect(() => {
-    if (!query.trim()) {
-      setResults([])
-      return
+    if (!newOpen) {
+      setSearchQuery("")
     }
-
-    setLoading(true)
-
-    // Simple search implementation
-    const searchResults = allProducts.filter(
-      (product) =>
-        product.name.toLowerCase().includes(query.toLowerCase()) ||
-        product.category.toLowerCase().includes(query.toLowerCase()) ||
-        product.brand.toLowerCase().includes(query.toLowerCase()) ||
-        product.description.toLowerCase().includes(query.toLowerCase()),
-    )
-
-    setResults(searchResults.slice(0, 10)) // Limit to 10 results
-    setLoading(false)
-  }, [query, allProducts])
-
-  const handleClose = () => {
-    setQuery("")
-    setResults([])
-    onOpenChange(false)
   }
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Search className="h-5 w-5" />
-            البحث في المنتجات
-          </DialogTitle>
-        </DialogHeader>
+  const currentOpen = open !== undefined ? open : isOpen
 
+  return (
+    <Dialog open={currentOpen} onOpenChange={handleOpenChange}>
+      <DialogTrigger asChild>
+        <Button variant="ghost" size="icon" className="hover:bg-easyoft-sky transition-colors duration-200">
+          <Search className="h-5 w-5 text-easyoft-blue" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-2xl" dir="rtl">
+        <DialogHeader>
+          <DialogTitle className="text-right">البحث في المنتجات</DialogTitle>
+        </DialogHeader>
         <div className="space-y-4">
           <div className="relative">
-            <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
-              placeholder="ابحث عن المنتجات..."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              className="pr-10"
-              dir="rtl"
+              placeholder="ابحث عن منتج، فئة، أو علامة تجارية..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pr-10 text-right"
               autoFocus
             />
-            {query && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="absolute left-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
-                onClick={() => setQuery("")}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            )}
           </div>
 
-          <div className="max-h-96 overflow-y-auto">
-            {loading && (
-              <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-easyoft-dark mx-auto"></div>
-                <p className="mt-2 text-sm text-gray-600">جاري البحث...</p>
-              </div>
-            )}
-
-            {!loading && query && results.length === 0 && (
-              <div className="text-center py-8">
-                <p className="text-gray-600">لا توجد نتائج للبحث "{query}"</p>
-              </div>
-            )}
-
-            {!loading && results.length > 0 && (
-              <div className="space-y-2">
-                {results.map((product) => (
-                  <Link
-                    key={product.id}
-                    href={`/product/${product.id}`}
-                    onClick={handleClose}
-                    className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors"
-                  >
-                    <Image
-                      src={product.image || "/placeholder.svg"}
-                      alt={product.name}
-                      width={48}
-                      height={48}
-                      className="rounded-lg object-cover"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-sm truncate">{product.name}</h3>
-                      <p className="text-xs text-gray-600 truncate">{product.category}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="font-bold text-easyoft-dark text-sm">{product.price} ر.س</span>
-                        {product.badge && <Badge className="bg-easyoft-aqua text-white text-xs">{product.badge}</Badge>}
+          {searchQuery && (
+            <div className="space-y-2 max-h-96 overflow-y-auto">
+              {filteredProducts.length > 0 ? (
+                <>
+                  <p className="text-sm text-gray-600 mb-3">تم العثور على {filteredProducts.length} منتج</p>
+                  {filteredProducts.map((product) => (
+                    <Link
+                      key={product.id}
+                      href={`/product/${product.id}`}
+                      onClick={() => handleOpenChange(false)}
+                      className="flex items-center space-x-3 space-x-reverse p-3 rounded-lg hover:bg-gray-50 transition-colors duration-200 group"
+                    >
+                      <div className="relative w-16 h-16 flex-shrink-0">
+                        <Image
+                          src={product.image || "/placeholder.svg"}
+                          alt={product.name}
+                          fill
+                          className="object-cover rounded-md group-hover:scale-105 transition-transform duration-200"
+                        />
                       </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            )}
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium text-gray-900 truncate group-hover:text-brand-primary transition-colors duration-200">
+                          {product.name}
+                        </h4>
+                        <div className="flex items-center space-x-2 space-x-reverse mt-1">
+                          <Badge variant="outline" className="text-xs">
+                            {product.category}
+                          </Badge>
+                          <span className="text-xs text-gray-500">{product.brand}</span>
+                        </div>
+                        <div className="flex items-center justify-between mt-2">
+                          <span className="text-sm font-bold text-brand-primary">
+                            {product.price.toLocaleString()} ر.س
+                          </span>
+                          <div className="flex items-center space-x-1 space-x-reverse">
+                            <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                            <span className="text-xs text-gray-600">{product.rating}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                  {allProducts.filter(
+                    (product) =>
+                      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      product.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      product.brand.toLowerCase().includes(searchQuery.toLowerCase()),
+                  ).length > 6 && (
+                    <Link
+                      href={`/products?search=${encodeURIComponent(searchQuery)}`}
+                      onClick={() => handleOpenChange(false)}
+                    >
+                      <Button variant="outline" className="w-full mt-3 bg-transparent">
+                        عرض جميع النتائج
+                      </Button>
+                    </Link>
+                  )}
+                </>
+              ) : (
+                <div className="text-center py-8">
+                  <Search className="h-12 w-12 mx-auto text-gray-400 mb-3" />
+                  <p className="text-gray-600">لم يتم العثور على منتجات مطابقة</p>
+                  <p className="text-sm text-gray-500 mt-1">جرب البحث بكلمات مختلفة</p>
+                </div>
+              )}
+            </div>
+          )}
 
-            {!loading && !query && (
-              <div className="text-center py-8">
-                <Search className="h-12 w-12 text-gray-300 mx-auto mb-2" />
-                <p className="text-gray-600">ابدأ بكتابة اسم المنتج أو الفئة للبحث</p>
-              </div>
-            )}
-          </div>
+          {!searchQuery && (
+            <div className="text-center py-8">
+              <Search className="h-12 w-12 mx-auto text-gray-400 mb-3" />
+              <p className="text-gray-600">ابدأ بكتابة اسم المنتج للبحث</p>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

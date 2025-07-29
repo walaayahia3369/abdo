@@ -1,4 +1,8 @@
-// نظام إدارة السلة
+"use client"
+
+import type React from "react"
+import { createContext, useContext, useEffect, useState } from "react"
+
 export interface CartItem {
   id: number
   name: string
@@ -15,107 +19,131 @@ export interface Cart {
   itemCount: number
 }
 
-class CartManager {
-  private static instance: CartManager
-  private cart: Cart = {
+interface CartContextType {
+  cart: Cart
+  addToCart: (product: {
+    id: number
+    name: string
+    price: number
+    image: string
+    category: string
+    brand: string
+  }) => void
+  removeFromCart: (productId: number) => void
+  updateQuantity: (productId: number, quantity: number) => void
+  clearCart: () => void
+  getTotalItems: () => number
+  getTotal: () => number
+}
+
+const CartContext = createContext<CartContextType | undefined>(undefined)
+
+export function CartProvider({ children }: { children: React.ReactNode }) {
+  const [cart, setCart] = useState<Cart>({
     items: [],
     total: 0,
     itemCount: 0,
-  }
-  private listeners: ((cart: Cart) => void)[] = []
+  })
 
-  static getInstance(): CartManager {
-    if (!CartManager.instance) {
-      CartManager.instance = new CartManager()
-    }
-    return CartManager.instance
-  }
-
-  constructor() {
-    if (typeof window !== "undefined") {
-      this.loadFromStorage()
-    }
-  }
-
-  private loadFromStorage() {
-    const saved = localStorage.getItem("eazysoft-cart")
-    if (saved) {
+  // Load cart from localStorage on mount
+  useEffect(() => {
+    const savedCart = localStorage.getItem("eazysoft-cart")
+    if (savedCart) {
       try {
-        this.cart = JSON.parse(saved)
+        const parsedCart = JSON.parse(savedCart)
+        setCart(parsedCart)
       } catch (error) {
-        console.error("Error loading cart from storage:", error)
+        console.error("Error loading cart from localStorage:", error)
       }
     }
+  }, [])
+
+  // Save cart to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem("eazysoft-cart", JSON.stringify(cart))
+  }, [cart])
+
+  const updateTotals = (items: CartItem[]) => {
+    const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0)
+    const itemCount = items.reduce((sum, item) => sum + item.quantity, 0)
+    return { total, itemCount }
   }
 
-  private saveToStorage() {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("eazysoft-cart", JSON.stringify(this.cart))
-    }
-  }
+  const addToCart = (product: {
+    id: number
+    name: string
+    price: number
+    image: string
+    category: string
+    brand: string
+  }) => {
+    setCart((prevCart) => {
+      const existingItem = prevCart.items.find((item) => item.id === product.id)
+      let newItems: CartItem[]
 
-  private updateTotals() {
-    this.cart.total = this.cart.items.reduce((sum, item) => sum + item.price * item.quantity, 0)
-    this.cart.itemCount = this.cart.items.reduce((sum, item) => sum + item.quantity, 0)
-    this.saveToStorage()
-    this.notifyListeners()
-  }
-
-  addItem(product: { id: number; name: string; price: number; image: string; category: string; brand: string }) {
-    const existingItem = this.cart.items.find((item) => item.id === product.id)
-
-    if (existingItem) {
-      existingItem.quantity += 1
-    } else {
-      this.cart.items.push({
-        ...product,
-        quantity: 1,
-      })
-    }
-
-    this.updateTotals()
-  }
-
-  removeItem(productId: number) {
-    this.cart.items = this.cart.items.filter((item) => item.id !== productId)
-    this.updateTotals()
-  }
-
-  updateQuantity(productId: number, quantity: number) {
-    const item = this.cart.items.find((item) => item.id === productId)
-    if (item) {
-      if (quantity <= 0) {
-        this.removeItem(productId)
+      if (existingItem) {
+        newItems = prevCart.items.map((item) =>
+          item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item,
+        )
       } else {
-        item.quantity = quantity
-        this.updateTotals()
+        newItems = [...prevCart.items, { ...product, quantity: 1 }]
       }
-    }
+
+      const { total, itemCount } = updateTotals(newItems)
+      return { items: newItems, total, itemCount }
+    })
   }
 
-  clearCart() {
-    this.cart = {
+  const removeFromCart = (productId: number) => {
+    setCart((prevCart) => {
+      const newItems = prevCart.items.filter((item) => item.id !== productId)
+      const { total, itemCount } = updateTotals(newItems)
+      return { items: newItems, total, itemCount }
+    })
+  }
+
+  const updateQuantity = (productId: number, quantity: number) => {
+    if (quantity <= 0) {
+      removeFromCart(productId)
+      return
+    }
+
+    setCart((prevCart) => {
+      const newItems = prevCart.items.map((item) => (item.id === productId ? { ...item, quantity } : item))
+      const { total, itemCount } = updateTotals(newItems)
+      return { items: newItems, total, itemCount }
+    })
+  }
+
+  const clearCart = () => {
+    setCart({
       items: [],
       total: 0,
       itemCount: 0,
-    }
-    this.updateTotals()
+    })
   }
 
-  getCart(): Cart {
-    return { ...this.cart }
+  const getTotalItems = () => cart.itemCount
+
+  const getTotal = () => cart.total
+
+  const value: CartContextType = {
+    cart,
+    addToCart,
+    removeFromCart,
+    updateQuantity,
+    clearCart,
+    getTotalItems,
+    getTotal,
   }
 
-  subscribe(listener: (cart: Cart) => void) {
-    this.listeners.push(listener)
-    return () => {
-      this.listeners = this.listeners.filter((l) => l !== listener)
-    }
-  }
-
-  private notifyListeners() {
-    this.listeners.forEach((listener) => listener(this.getCart()))
-  }
+  return <CartContext.Provider value={value}>{children}</CartContext.Provider>
 }
 
-export const cartManager = CartManager.getInstance()
+export function useCart() {
+  const context = useContext(CartContext)
+  if (context === undefined) {
+    throw new Error("useCart must be used within a CartProvider")
+  }
+  return context
+}

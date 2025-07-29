@@ -20,7 +20,7 @@ export default function HomePage() {
   const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null)
   const [contactInfo, setContactInfo] = useState<ContactInfo | null>(null)
   const [loading, setLoading] = useState(true)
-  const { itemCount, total, addToCart } = useCart()
+  const { cart, addToCart } = useCart()
 
   useEffect(() => {
     loadData()
@@ -146,15 +146,15 @@ export default function HomePage() {
                   className="relative group hover:bg-easyoft-sky transition-all duration-300"
                 >
                   <ShoppingCart className="h-5 w-5 text-easyoft-blue group-hover:scale-110 transition-transform duration-200" />
-                  {itemCount > 0 && (
+                  {cart.itemCount > 0 && (
                     <span className="absolute -top-2 -right-2 bg-gradient-to-r from-red-500 to-red-600 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center animate-bounce-gentle shadow-lg">
-                      {itemCount}
+                      {cart.itemCount}
                     </span>
                   )}
                 </Button>
               </Link>
               <span className="text-sm font-semibold text-easyoft-darkBlue bg-easyoft-sky px-3 py-1 rounded-full">
-                {typeof total === "number" ? total.toLocaleString() : "0"} ر.س
+                {cart.total.toLocaleString()} ر.س
               </span>
               <MobileNav categories={categories} />
             </div>
