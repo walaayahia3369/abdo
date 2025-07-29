@@ -5,13 +5,31 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ShoppingCart, Plus, Minus, Trash2, ArrowRight } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
-import { db } from "@/lib/db"
 import { SearchDialog } from "@/components/search-dialog"
 import { useCart } from "@/hooks/use-cart"
+import { useEffect, useState } from "react"
+import { db, type Category } from "@/lib/db"
 
 export default function CartPage() {
   const { cart, addToCart, removeFromCart, updateQuantity, clearCart } = useCart()
-  const categories = db.getCategories()
+  const [categories, setCategories] = useState<Category[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const categoriesData = await db.getCategories()
+        setCategories(categoriesData || [])
+      } catch (error) {
+        console.error("Error fetching categories:", error)
+        setCategories([])
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchCategories()
+  }, [])
 
   const handleUpdateQuantity = (productId: number, newQuantity: number) => {
     if (newQuantity <= 0) {
@@ -24,6 +42,17 @@ export default function CartPage() {
   const getItemQuantity = (productId: number) => {
     const item = cart.items.find((item) => item.id === productId)
     return item ? item.quantity : 0
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center" dir="rtl">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-primary mx-auto mb-4"></div>
+          <p className="text-gray-600">جاري التحميل...</p>
+        </div>
+      </div>
+    )
   }
 
   return (

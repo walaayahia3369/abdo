@@ -567,7 +567,49 @@ class Database {
 
       if (error) {
         console.error("Error fetching categories:", error)
-        return []
+        // Return default categories if database fails
+        return [
+          {
+            id: 1,
+            name: "كاميرات المراقبة",
+            slug: "cameras",
+            description: "كاميرات مراقبة عالية الجودة",
+            image: "/placeholder.svg?height=200&width=200&text=Cameras",
+            product_count: 0,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+          {
+            id: 2,
+            name: "أنظمة الإنذار",
+            slug: "alarms",
+            description: "أنظمة إنذار متطورة",
+            image: "/placeholder.svg?height=200&width=200&text=Alarms",
+            product_count: 0,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+          {
+            id: 3,
+            name: "الأقفال الذكية",
+            slug: "smart-locks",
+            description: "أقفال ذكية آمنة",
+            image: "/placeholder.svg?height=200&width=200&text=Smart+Locks",
+            product_count: 0,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+          {
+            id: 4,
+            name: "المنازل الذكية",
+            slug: "smart-home",
+            description: "حلول المنازل الذكية",
+            image: "/placeholder.svg?height=200&width=200&text=Smart+Home",
+            product_count: 0,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+        ]
       }
       return data || []
     } catch (error) {
