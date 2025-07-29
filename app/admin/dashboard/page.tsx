@@ -17,7 +17,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -32,15 +31,16 @@ import {
   Star,
   Users,
   FileText,
-  HelpCircle,
   Wrench,
   MessageCircle,
-  Phone,
   TrendingUp,
+  ImageIcon,
+  Presentation,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
+import { ImageUploadDialog } from "@/components/image-upload-dialog"
 import {
   db,
   type Product,
@@ -52,12 +52,15 @@ import {
   type Service,
   type Stat,
   type FAQ,
+  type HeroSlide,
 } from "@/lib/db"
 import { toast } from "@/hooks/use-toast"
+import type { UploadedImage } from "@/lib/image-upload"
 
 export default function AdminDashboard() {
   const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<Category[]>([])
+  const [heroSlides, setHeroSlides] = useState<HeroSlide[]>([])
   const [aboutPage, setAboutPage] = useState<AboutPage | null>(null)
   const [contactSettings, setContactSettings] = useState<ContactSettings | null>(null)
   const [contactInfo, setContactInfo] = useState<ContactInfo | null>(null)
@@ -68,12 +71,14 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null)
+  const [selectedHeroSlide, setSelectedHeroSlide] = useState<HeroSlide | null>(null)
   const [selectedTeamMember, setSelectedTeamMember] = useState<TeamMember | null>(null)
   const [selectedService, setSelectedService] = useState<Service | null>(null)
   const [selectedStat, setSelectedStat] = useState<Stat | null>(null)
   const [selectedFAQ, setSelectedFAQ] = useState<FAQ | null>(null)
   const [showProductDialog, setShowProductDialog] = useState(false)
   const [showCategoryDialog, setShowCategoryDialog] = useState(false)
+  const [showHeroSlideDialog, setShowHeroSlideDialog] = useState(false)
   const [showTeamDialog, setShowTeamDialog] = useState(false)
   const [showServiceDialog, setShowServiceDialog] = useState(false)
   const [showStatDialog, setShowStatDialog] = useState(false)
@@ -89,6 +94,7 @@ export default function AdminDashboard() {
     category: "",
     brand: "",
     image: "",
+    local_image_path: "",
     features: "",
     rating: "4.5",
     reviews: "0",
@@ -102,7 +108,19 @@ export default function AdminDashboard() {
     description: "",
     slug: "",
     image: "",
+    local_image_path: "",
     product_count: "0",
+  })
+
+  const [heroSlideForm, setHeroSlideForm] = useState({
+    title: "",
+    subtitle: "",
+    description: "",
+    image_url: "",
+    button_text: "",
+    button_link: "",
+    is_active: true,
+    sort_order: "1",
   })
 
   const [aboutForm, setAboutForm] = useState({
@@ -146,6 +164,7 @@ export default function AdminDashboard() {
     name: "",
     role: "",
     image: "",
+    local_image_path: "",
     bio: "",
   })
 
@@ -183,6 +202,7 @@ export default function AdminDashboard() {
       const [
         productsData,
         categoriesData,
+        heroSlidesData,
         aboutData,
         contactSettingsData,
         contactInfoData,
@@ -193,6 +213,7 @@ export default function AdminDashboard() {
       ] = await Promise.all([
         db.getProducts(),
         db.getCategories(),
+        db.getHeroSlides(),
         db.getAboutPage(),
         db.getContactSettings(),
         db.getContactInfo(),
@@ -204,6 +225,7 @@ export default function AdminDashboard() {
 
       setProducts(productsData)
       setCategories(categoriesData)
+      setHeroSlides(heroSlidesData)
       setAboutPage(aboutData)
       setContactSettings(contactSettingsData)
       setContactInfo(contactInfoData)
@@ -270,6 +292,108 @@ export default function AdminDashboard() {
   const handleLogout = () => {
     localStorage.removeItem("adminUser")
     router.push("/admin")
+  }
+
+  // Image selection handlers
+  const handleProductImageSelect = (image: UploadedImage) => {
+    setProductForm({ ...productForm, local_image_path: image.file_path, image: image.file_path })
+  }
+
+  const handleCategoryImageSelect = (image: UploadedImage) => {
+    setCategoryForm({ ...categoryForm, local_image_path: image.file_path, image: image.file_path })
+  }
+
+  const handleHeroSlideImageSelect = (image: UploadedImage) => {
+    setHeroSlideForm({ ...heroSlideForm, image_url: image.file_path })
+  }
+
+  const handleTeamImageSelect = (image: UploadedImage) => {
+    setTeamForm({ ...teamForm, local_image_path: image.file_path, image: image.file_path })
+  }
+
+  // Hero Slide handlers
+  const handleHeroSlideSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      const slideData = {
+        ...heroSlideForm,
+        sort_order: Number.parseInt(heroSlideForm.sort_order),
+      }
+
+      if (selectedHeroSlide) {
+        await db.updateHeroSlide(selectedHeroSlide.id, slideData)
+        toast({
+          title: "تم تحديث الشريحة بنجاح! ✅",
+          description: `تم تحديث ${slideData.title}`,
+        })
+      } else {
+        await db.addHeroSlide(slideData)
+        toast({
+          title: "تم إضافة الشريحة بنجاح! 🎉",
+          description: `تم إضافة ${slideData.title}`,
+        })
+      }
+
+      setShowHeroSlideDialog(false)
+      resetHeroSlideForm()
+      loadData()
+    } catch (error) {
+      console.error("Error saving hero slide:", error)
+      toast({
+        title: "خطأ في حفظ الشريحة",
+        description: "حدث خطأ أثناء حفظ الشريحة",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleDeleteHeroSlide = async (id: number) => {
+    if (confirm("هل أنت متأكد من حذف هذه الشريحة؟")) {
+      try {
+        await db.deleteHeroSlide(id)
+        toast({
+          title: "تم حذف الشريحة بنجاح! 🗑️",
+          description: "تم حذف الشريحة من قاعدة البيانات",
+        })
+        loadData()
+      } catch (error) {
+        console.error("Error deleting hero slide:", error)
+        toast({
+          title: "خطأ في حذف الشريحة",
+          description: "حدث خطأ أثناء حذف الشريحة",
+          variant: "destructive",
+        })
+      }
+    }
+  }
+
+  const editHeroSlide = (slide: HeroSlide) => {
+    setSelectedHeroSlide(slide)
+    setHeroSlideForm({
+      title: slide.title,
+      subtitle: slide.subtitle || "",
+      description: slide.description || "",
+      image_url: slide.image_url,
+      button_text: slide.button_text || "",
+      button_link: slide.button_link || "",
+      is_active: slide.is_active,
+      sort_order: slide.sort_order.toString(),
+    })
+    setShowHeroSlideDialog(true)
+  }
+
+  const resetHeroSlideForm = () => {
+    setHeroSlideForm({
+      title: "",
+      subtitle: "",
+      description: "",
+      image_url: "",
+      button_text: "",
+      button_link: "",
+      is_active: true,
+      sort_order: "1",
+    })
+    setSelectedHeroSlide(null)
   }
 
   // Product handlers
@@ -661,6 +785,7 @@ export default function AdminDashboard() {
       category: "",
       brand: "",
       image: "",
+      local_image_path: "",
       features: "",
       rating: "4.5",
       reviews: "0",
@@ -677,6 +802,7 @@ export default function AdminDashboard() {
       description: "",
       slug: "",
       image: "",
+      local_image_path: "",
       product_count: "0",
     })
     setSelectedCategory(null)
@@ -687,6 +813,7 @@ export default function AdminDashboard() {
       name: "",
       role: "",
       image: "",
+      local_image_path: "",
       bio: "",
     })
     setSelectedTeamMember(null)
@@ -728,12 +855,13 @@ export default function AdminDashboard() {
       category: product.category,
       brand: product.brand,
       image: product.image || "",
+      local_image_path: product.local_image_path || "",
       features: product.features.join("\n"),
       rating: product.rating.toString(),
       reviews: product.reviews.toString(),
       badge: product.badge || "",
       in_stock: product.in_stock,
-      is_featured: false,
+      is_featured: product.is_featured || false,
     })
     setShowProductDialog(true)
   }
@@ -745,6 +873,7 @@ export default function AdminDashboard() {
       description: category.description || "",
       slug: category.slug,
       image: category.image || "",
+      local_image_path: category.local_image_path || "",
       product_count: category.product_count.toString(),
     })
     setShowCategoryDialog(true)
@@ -756,6 +885,7 @@ export default function AdminDashboard() {
       name: member.name,
       role: member.role,
       image: member.image || "",
+      local_image_path: member.local_image_path || "",
       bio: member.bio || "",
     })
     setShowTeamDialog(true)
@@ -842,27 +972,28 @@ export default function AdminDashboard() {
 
       <div className="container mx-auto px-4 py-8">
         {/* Stats Cards */}
-        <div className="grid md:grid-cols-5 gap-6 mb-8">
+        <div className="grid md:grid-cols-6 gap-6 mb-8">
           {[
             { title: "إجمالي المنتجات", value: products.length, icon: Package, color: "from-blue-500 to-blue-600" },
             { title: "الفئات", value: categories.length, icon: Database, color: "from-green-500 to-green-600" },
+            { title: "شرائح الهيرو", value: heroSlides.length, icon: Presentation, color: "from-purple-500 to-purple-600" },
             {
               title: "أعضاء الفريق",
               value: teamMembers.length,
               icon: Users,
-              color: "from-purple-500 to-purple-600",
+              color: "from-red-500 to-red-600",
             },
             {
               title: "الخدمات",
               value: services.length,
               icon: Wrench,
-              color: "from-red-500 to-red-600",
+              color: "from-orange-500 to-orange-600",
             },
             {
               title: "الإحصائيات",
               value: stats.length,
               icon: TrendingUp,
-              color: "from-orange-500 to-orange-600",
+              color: "from-pink-500 to-pink-600",
             },
           ].map((stat, index) => (
             <Card
@@ -889,13 +1020,20 @@ export default function AdminDashboard() {
 
         {/* Main Content */}
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="bg-white/80 backdrop-blur-sm border border-easyoft-sky p-1 rounded-xl grid grid-cols-6 w-full">
+          <TabsList className="bg-white/80 backdrop-blur-sm border border-easyoft-sky p-1 rounded-xl grid grid-cols-7 w-full">
             <TabsTrigger
               value="overview"
               className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-brand-primary data-[state=active]:to-easyoft-blue data-[state=active]:text-white rounded-lg transition-all duration-300"
             >
               <TrendingUp className="h-4 w-4 ml-2" />
               نظرة عامة
+            </TabsTrigger>
+            <TabsTrigger
+              value="hero"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-brand-primary data-[state=active]:to-easyoft-blue data-[state=active]:text-white rounded-lg transition-all duration-300"
+            >
+              <Presentation className="h-4 w-4 ml-2" />
+              سلايدر الهيرو
             </TabsTrigger>
             <TabsTrigger
               value="products"
@@ -962,27 +1100,261 @@ export default function AdminDashboard() {
               <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
                 <CardHeader>
                   <CardTitle className="text-easyoft-navy flex items-center gap-2">
-                    <Users className="h-5 w-5" />
-                    أعضاء الفريق
+                    <Presentation className="h-5 w-5" />
+                    شرائح الهيرو
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {teamMembers.slice(0, 5).map((member) => (
-                      <div key={member.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                    {heroSlides.slice(0, 5).map((slide) => (
+                      <div key={slide.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                         <div className="w-10 h-10 bg-gradient-to-r from-brand-primary to-easyoft-blue rounded-full flex items-center justify-center">
-                          <Users className="w-5 h-5 text-white" />
+                          <Presentation className="w-5 h-5 text-white" />
                         </div>
                         <div>
-                          <p className="font-medium">{member.name}</p>
-                          <p className="text-sm text-gray-600">{member.role}</p>
+                          <p className="font-medium">{slide.title}</p>
+                          <p className="text-sm text-gray-600">ترتيب: {slide.sort_order}</p>
                         </div>
+                        <Badge variant={slide.is_active ? "default" : "secondary"}>
+                          {slide.is_active ? "نشط" : "غير نشط"}
+                        </Badge>
                       </div>
                     ))}
                   </div>
                 </CardContent>
               </Card>
             </div>
+          </TabsContent>
+
+          {/* Hero Slider Tab */}
+          <TabsContent value="hero" className="space-y-6">
+            <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="text-easyoft-navy flex items-center gap-2">
+                    <Presentation className="h-5 w-5" />
+                    إدارة سلايدر الهيرو
+                  </CardTitle>
+                  <CardDescription className="text-easyoft-darkBlue">إضافة وتعديل شرائح الهيرو</CardDescription>
+                </div>
+                <Dialog open={showHeroSlideDialog} onOpenChange={setShowHeroSlideDialog}>
+                  <DialogTrigger asChild>
+                    <Button
+                      className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300"
+                      onClick={resetHeroSlideForm}
+                    >
+                      <Plus className="h-4 w-4 ml-2" />
+                      إضافة شريحة جديدة
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl bg-white/95 backdrop-blur-sm max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle className="text-easyoft-navy">
+                        {selectedHeroSlide ? "تعديل الشريحة" : "إضافة شريحة جديدة"}
+                      </DialogTitle>
+                      <DialogDescription className="text-easyoft-darkBlue">
+                        {selectedHeroSlide ? "قم بتعديل بيانات الشريحة" : "أدخل بيانات الشريحة الجديدة"}
+                      </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleHeroSlideSubmit} className="space-y-4">
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="slide-title" className="text-easyoft-navy">
+                            العنوان الرئيسي
+                          </Label>
+                          <Input
+                            id="slide-title"
+                            value={heroSlideForm.title}
+                            onChange={(e) => setHeroSlideForm({ ...heroSlideForm, title: e.target.value })}
+                            className="border-easyoft-sky focus:border-brand-primary"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="slide-subtitle" className="text-easyoft-navy">
+                            العنوان الفرعي
+                          </Label>
+                          <Input
+                            id="slide-subtitle"
+                            value={heroSlideForm.subtitle}
+                            onChange={(e) => setHeroSlideForm({ ...heroSlideForm, subtitle: e.target.value })}
+                            className="border-easyoft-sky focus:border-brand-primary"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="slide-description" className="text-easyoft-navy">
+                          الوصف
+                        </Label>
+                        <Textarea
+                          id="slide-description"
+                          value={heroSlideForm.description}
+                          onChange={(e) => setHeroSlideForm({ ...heroSlideForm, description: e.target.value })}
+                          className="border-easyoft-sky focus:border-brand-primary"
+                          rows={3}
+                        />
+                      </div>
+
+                      <div>
+                        <Label className="text-easyoft-navy mb-2 block">صورة الشريحة</Label>
+                        <div className="flex gap-4">
+                          <ImageUploadDialog
+                            category="hero"
+                            onImageSelect={handleHeroSlideImageSelect}
+                          >
+                            <Button type="button" variant="outline" className="flex-1 bg-transparent">
+                              <ImageIcon className="h-4 w-4 ml-2" />
+                              اختيار صورة
+                            </Button>
+                          </ImageUploadDialog>
+                          {heroSlideForm.image_url && (
+                            <div className="relative w-20 h-20 rounded-lg overflow-hidden border">
+                              <Image
+                                src={heroSlideForm.image_url || "/placeholder.svg"}
+                                alt="معاينة الصورة"
+                                fill
+                                className="object-cover"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="slide-button-text" className="text-easyoft-navy">
+                            نص الزر
+                          </Label>
+                          <Input
+                            id="slide-button-text"
+                            value={heroSlideForm.button_text}
+                            onChange={(e) => setHeroSlideForm({ ...heroSlideForm, button_text: e.target.value })}
+                            className="border-easyoft-sky focus:border-brand-primary"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="slide-button-link" className="text-easyoft-navy">
+                            رابط الزر
+                          </Label>
+                          <Input
+                            id="slide-button-link"
+                            value={heroSlideForm.button_link}
+                            onChange={(e) => setHeroSlideForm({ ...heroSlideForm, button_link: e.target.value })}
+                            className="border-easyoft-sky focus:border-brand-primary"
+                            placeholder="/products, /contact, etc."
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="slide-sort-order" className="text-easyoft-navy">
+                            ترتيب العرض
+                          </Label>
+                          <Input
+                            id="slide-sort-order"
+                            type="number"
+                            min="1"
+                            value={heroSlideForm.sort_order}
+                            onChange={(e) => setHeroSlideForm({ ...heroSlideForm, sort_order: e.target.value })}
+                            className="border-easyoft-sky focus:border-brand-primary"
+                          />
+                        </div>
+                        <div className="flex items-center space-x-2 pt-6">
+                          <Switch
+                            id="slide-active"
+                            checked={heroSlideForm.is_active}
+                            onCheckedChange={(checked) => setHeroSlideForm({ ...heroSlideForm, is_active: checked })}
+                          />
+                          <Label htmlFor="slide-active" className="text-easyoft-navy">
+                            نشط
+                          </Label>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 pt-4">
+                        <Button
+                          type="submit"
+                          className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white flex-1"
+                        >
+                          {selectedHeroSlide ? "تحديث الشريحة" : "إضافة الشريحة"}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setShowHeroSlideDialog(false)}
+                          className="border-easyoft-sky text-easyoft-darkBlue hover:bg-easyoft-sky"
+                        >
+                          إلغاء
+                        </Button>
+                      </div>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </CardHeader>
+              <CardContent>
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {heroSlides.map((slide, index) => (
+                    <Card
+                      key={slide.id}
+                      className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 animate-scale-in"
+                      style={{ animationDelay: `${index * 0.1}s` }}
+                    >
+                      <CardContent className="p-6">
+                        <div className="relative w-full h-32 mb-4 rounded-lg overflow-hidden bg-gray-100">
+                          <Image
+                            src={slide.image_url || "/placeholder.svg?height=128&width=240"}
+                            alt={slide.title}
+                            fill
+                            className="object-cover"
+                          />
+                          <div className="absolute top-2 right-2">
+                            <Badge variant={slide.is_active ? "default" : "secondary"}>
+                              {slide.is_active ? "نشط" : "غير نشط"}
+                            </Badge>
+                          </div>
+                          <div className="absolute top-2 left-2">
+                            <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white">
+                              #{slide.sort_order}
+                            </Badge>
+                          </div>
+                        </div>
+                        <h3 className="font-semibold text-easyoft-navy mb-2 line-clamp-2">{slide.title}</h3>
+                        {slide.subtitle && (
+                          <p className="text-sm text-easyoft-darkBlue mb-2 line-clamp-1">{slide.subtitle}</p>
+                        )}
+                        {slide.button_text && (
+                          <div className="flex items-center gap-2 mb-4">
+                            <span className="text-xs bg-easyoft-sky px-2 py-1 rounded-full">{slide.button_text}</span>
+                            <span className="text-xs text-gray-500">{slide.button_link}</span>
+                          </div>
+                        )}
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => editHeroSlide(slide)}
+                            className="border-easyoft-blue text-easyoft-blue hover:bg-easyoft-sky flex-1"
+                          >
+                            <Edit className="h-4 w-4 ml-1" />
+                            تعديل
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleDeleteHeroSlide(slide.id)}
+                            className="border-red-200 text-red-600 hover:bg-red-50"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* Products Tab */}
@@ -1099,16 +1471,28 @@ export default function AdminDashboard() {
                       </div>
 
                       <div>
-                        <Label htmlFor="product-image" className="text-easyoft-navy">
-                          رابط الصورة
-                        </Label>
-                        <Input
-                          id="product-image"
-                          value={productForm.image}
-                          onChange={(e) => setProductForm({ ...productForm, image: e.target.value })}
-                          className="border-easyoft-sky focus:border-brand-primary"
-                          placeholder="https://example.com/image.jpg"
-                        />
+                        <Label className="text-easyoft-navy mb-2 block">صورة المنتج</Label>
+                        <div className="flex gap-4">
+                          <ImageUploadDialog
+                            category="products"
+                            onImageSelect={handleProductImageSelect}
+                          >
+                            <Button type="button" variant="outline" className="flex-1 bg-transparent">
+                              <ImageIcon className="h-4 w-4 ml-2" />
+                              اختيار صورة
+                            </Button>
+                          </ImageUploadDialog>
+                          {(productForm.local_image_path || productForm.image) && (
+                            <div className="relative w-20 h-20 rounded-lg overflow-hidden border">
+                              <Image
+                                src={productForm.local_image_path || productForm.image}
+                                alt="معاينة الصورة"
+                                fill
+                                className="object-cover"
+                              />
+                            </div>
+                          )}
+                        </div>
                       </div>
 
                       <div>
@@ -1222,7 +1606,7 @@ export default function AdminDashboard() {
                       <CardContent className="p-6">
                         <div className="relative w-full h-40 mb-4 rounded-lg overflow-hidden bg-gray-100">
                           <Image
-                            src={product.image || "/placeholder.svg?height=160&width=240"}
+                            src={product.local_image_path || product.image || "/placeholder.svg?height=160&width=240"}
                             alt={product.name}
                             fill
                             className="object-cover"
@@ -1346,16 +1730,28 @@ export default function AdminDashboard() {
                       </div>
 
                       <div>
-                        <Label htmlFor="category-image" className="text-easyoft-navy">
-                          رابط الصورة
-                        </Label>
-                        <Input
-                          id="category-image"
-                          value={categoryForm.image}
-                          onChange={(e) => setCategoryForm({ ...categoryForm, image: e.target.value })}
-                          className="border-easyoft-sky focus:border-brand-primary"
-                          placeholder="https://example.com/image.jpg"
-                        />
+                        <Label className="text-easyoft-navy mb-2 block">صورة الفئة</Label>
+                        <div className="flex gap-4">
+                          <ImageUploadDialog
+                            category="categories"
+                            onImageSelect={handleCategoryImageSelect}
+                          >
+                            <Button type="button" variant="outline" className="flex-1 bg-transparent">
+                              <ImageIcon className="h-4 w-4 ml-2" />
+                              اختيار صورة
+                            </Button>
+                          </ImageUploadDialog>
+                          {(categoryForm.local_image_path || categoryForm.image) && (
+                            <div className="relative w-20 h-20 rounded-lg overflow-hidden border">
+                              <Image
+                                src={categoryForm.local_image_path || categoryForm.image}
+                                alt="معاينة الصورة"
+                                fill
+                                className="object-cover"
+                              />
+                            </div>
+                          )}
+                        </div>
                       </div>
 
                       <div>
@@ -1403,7 +1799,7 @@ export default function AdminDashboard() {
                       <CardContent className="p-6">
                         <div className="relative w-full h-32 mb-4 rounded-lg overflow-hidden bg-gray-100">
                           <Image
-                            src={category.image || "/placeholder.svg?height=128&width=240"}
+                            src={category.local_image_path || category.image || "/placeholder.svg?height=128&width=240"}
                             alt={category.name}
                             fill
                             className="object-cover"
@@ -1674,16 +2070,28 @@ export default function AdminDashboard() {
                       </div>
 
                       <div>
-                        <Label htmlFor="member-image" className="text-easyoft-navy">
-                          رابط الصورة
-                        </Label>
-                        <Input
-                          id="member-image"
-                          value={teamForm.image}
-                          onChange={(e) => setTeamForm({ ...teamForm, image: e.target.value })}
-                          className="border-easyoft-sky focus:border-brand-primary"
-                          placeholder="https://example.com/image.jpg"
-                        />
+                        <Label className="text-easyoft-navy mb-2 block">صورة العضو</Label>
+                        <div className="flex gap-4">
+                          <ImageUploadDialog
+                            category="team"
+                            onImageSelect={handleTeamImageSelect}
+                          >
+                            <Button type="button" variant="outline" className="flex-1 bg-transparent">
+                              <ImageIcon className="h-4 w-4 ml-2" />
+                              اختيار صورة
+                            </Button>
+                          </ImageUploadDialog>
+                          {(teamForm.local_image_path || teamForm.image) && (
+                            <div className="relative w-20 h-20 rounded-lg overflow-hidden border">
+                              <Image
+                                src={teamForm.local_image_path || teamForm.image}
+                                alt="معاينة الصورة"
+                                fill
+                                className="object-cover"
+                              />
+                            </div>
+                          )}
+                        </div>
                       </div>
 
                       <div>
@@ -1730,7 +2138,7 @@ export default function AdminDashboard() {
                       <CardContent className="p-6 text-center">
                         <div className="relative w-20 h-20 mx-auto mb-4 rounded-full overflow-hidden">
                           <Image
-                            src={member.image || "/placeholder-user.jpg"}
+                            src={member.local_image_path || member.image || "/placeholder-user.jpg"}
                             alt={member.name}
                             fill
                             className="object-cover"
@@ -1757,626 +2165,4 @@ export default function AdminDashboard() {
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Services Management */}
-            <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle className="text-easyoft-navy flex items-center gap-2">
-                    <Wrench className="h-5 w-5" />
-                    إدارة الخدمات
-                  </CardTitle>
-                  <CardDescription className="text-easyoft-darkBlue">إضافة وتعديل الخدمات</CardDescription>
-                </div>
-                <Dialog open={showServiceDialog} onOpenChange={setShowServiceDialog}>
-                  <DialogTrigger asChild>
-                    <Button
-                      className="bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300"
-                      onClick={resetServiceForm}
-                    >
-                      <Plus className="h-4 w-4 ml-2" />
-                      إضافة خدمة جديدة
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-lg bg-white/95 backdrop-blur-sm">
-                    <DialogHeader>
-                      <DialogTitle className="text-easyoft-navy">
-                        {selectedService ? "تعديل الخدمة" : "إضافة خدمة جديدة"}
-                      </DialogTitle>
-                      <DialogDescription className="text-easyoft-darkBlue">
-                        {selectedService ? "قم بتعديل بيانات الخدمة" : "أدخل بيانات الخدمة الجديدة"}
-                      </DialogDescription>
-                    </DialogHeader>
-                    <form onSubmit={handleServiceSubmit} className="space-y-4">
-                      <div>
-                        <Label htmlFor="service-title" className="text-easyoft-navy">
-                          عنوان الخدمة
-                        </Label>
-                        <Input
-                          id="service-title"
-                          value={serviceForm.title}
-                          onChange={(e) => setServiceForm({ ...serviceForm, title: e.target.value })}
-                          className="border-easyoft-sky focus:border-brand-primary"
-                          required
-                        />
-                      </div>
-
-                      <div>
-                        <Label htmlFor="service-description" className="text-easyoft-navy">
-                          وصف الخدمة
-                        </Label>
-                        <Textarea
-                          id="service-description"
-                          value={serviceForm.description}
-                          onChange={(e) => setServiceForm({ ...serviceForm, description: e.target.value })}
-                          className="border-easyoft-sky focus:border-brand-primary"
-                          rows={3}
-                          required
-                        />
-                      </div>
-
-                      <div>
-                        <Label htmlFor="service-icon" className="text-easyoft-navy">
-                          اسم الأيقونة
-                        </Label>
-                        <Input
-                          id="service-icon"
-                          value={serviceForm.icon}
-                          onChange={(e) => setServiceForm({ ...serviceForm, icon: e.target.value })}
-                          className="border-easyoft-sky focus:border-brand-primary"
-                          placeholder="Fingerprint, Shield, Camera, etc."
-                          required
-                        />
-                      </div>
-
-                      <div className="flex gap-2 pt-4">
-                        <Button
-                          type="submit"
-                          className="bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white flex-1"
-                        >
-                          {selectedService ? "تحديث الخدمة" : "إضافة الخدمة"}
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => setShowServiceDialog(false)}
-                          className="border-easyoft-sky text-easyoft-darkBlue hover:bg-easyoft-sky"
-                        >
-                          إلغاء
-                        </Button>
-                      </div>
-                    </form>
-                  </DialogContent>
-                </Dialog>
-              </CardHeader>
-              <CardContent>
-                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {services.map((service, index) => (
-                    <Card
-                      key={service.id}
-                      className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 animate-scale-in"
-                      style={{ animationDelay: `${index * 0.1}s` }}
-                    >
-                      <CardContent className="p-4 text-center">
-                        <div className="text-blue-600 mb-3">
-                          <Wrench className="w-8 h-8 mx-auto" />
-                        </div>
-                        <h4 className="font-semibold text-easyoft-navy mb-2">{service.title}</h4>
-                        <p className="text-xs text-easyoft-darkBlue mb-4 line-clamp-2">{service.description}</p>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => editService(service)}
-                            className="border-easyoft-blue text-easyoft-blue hover:bg-easyoft-sky flex-1"
-                          >
-                            <Edit className="h-3 w-3 ml-1" />
-                            تعديل
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleDeleteService(service.id)}
-                            className="border-red-200 text-red-600 hover:bg-red-50"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Stats Management */}
-            <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle className="text-easyoft-navy flex items-center gap-2">
-                    <Star className="h-5 w-5" />
-                    إدارة الإحصائيات
-                  </CardTitle>
-                  <CardDescription className="text-easyoft-darkBlue">إضافة وتعديل الإحصائيات</CardDescription>
-                </div>
-                <Dialog open={showStatDialog} onOpenChange={setShowStatDialog}>
-                  <DialogTrigger asChild>
-                    <Button
-                      className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300"
-                      onClick={resetStatForm}
-                    >
-                      <Plus className="h-4 w-4 ml-2" />
-                      إضافة إحصائية جديدة
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-lg bg-white/95 backdrop-blur-sm">
-                    <DialogHeader>
-                      <DialogTitle className="text-easyoft-navy">
-                        {selectedStat ? "تعديل الإحصائية" : "إضافة إحصائية جديدة"}
-                      </DialogTitle>
-                      <DialogDescription className="text-easyoft-darkBlue">
-                        {selectedStat ? "قم بتعديل بيانات الإحصائية" : "أدخل بيانات الإحصائية الجديدة"}
-                      </DialogDescription>
-                    </DialogHeader>
-                    <form onSubmit={handleStatSubmit} className="space-y-4">
-                      <div>
-                        <Label htmlFor="stat-number" className="text-easyoft-navy">
-                          الرقم
-                        </Label>
-                        <Input
-                          id="stat-number"
-                          value={statForm.number}
-                          onChange={(e) => setStatForm({ ...statForm, number: e.target.value })}
-                          className="border-easyoft-sky focus:border-brand-primary"
-                          placeholder="500+, 24/7, etc."
-                          required
-                        />
-                      </div>
-
-                      <div>
-                        <Label htmlFor="stat-label" className="text-easyoft-navy">
-                          التسمية
-                        </Label>
-                        <Input
-                          id="stat-label"
-                          value={statForm.label}
-                          onChange={(e) => setStatForm({ ...statForm, label: e.target.value })}
-                          className="border-easyoft-sky focus:border-brand-primary"
-                          placeholder="عميل راضي، مشروع مكتمل، etc."
-                          required
-                        />
-                      </div>
-
-                      <div className="flex gap-2 pt-4">
-                        <Button
-                          type="submit"
-                          className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white flex-1"
-                        >
-                          {selectedStat ? "تحديث الإحصائية" : "إضافة الإحصائية"}
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => setShowStatDialog(false)}
-                          className="border-easyoft-sky text-easyoft-darkBlue hover:bg-easyoft-sky"
-                        >
-                          إلغاء
-                        </Button>
-                      </div>
-                    </form>
-                  </DialogContent>
-                </Dialog>
-              </CardHeader>
-              <CardContent>
-                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {stats.map((stat, index) => (
-                    <Card
-                      key={stat.id}
-                      className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 animate-scale-in"
-                      style={{ animationDelay: `${index * 0.1}s` }}
-                    >
-                      <CardContent className="p-4 text-center">
-                        <div className="text-2xl font-bold text-purple-600 mb-2">{stat.number}</div>
-                        <div className="text-sm text-easyoft-darkBlue mb-4">{stat.label}</div>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => editStat(stat)}
-                            className="border-easyoft-blue text-easyoft-blue hover:bg-easyoft-sky flex-1"
-                          >
-                            <Edit className="h-3 w-3 ml-1" />
-                            تعديل
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleDeleteStat(stat.id)}
-                            className="border-red-200 text-red-600 hover:bg-red-50"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* FAQs Management */}
-            <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle className="text-easyoft-navy flex items-center gap-2">
-                    <HelpCircle className="h-5 w-5" />
-                    إدارة الأسئلة الشائعة
-                  </CardTitle>
-                  <CardDescription className="text-easyoft-darkBlue">إضافة وتعديل الأسئلة الشائعة</CardDescription>
-                </div>
-                <Dialog open={showFAQDialog} onOpenChange={setShowFAQDialog}>
-                  <DialogTrigger asChild>
-                    <Button
-                      className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300"
-                      onClick={resetFAQForm}
-                    >
-                      <Plus className="h-4 w-4 ml-2" />
-                      إضافة سؤال جديد
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-lg bg-white/95 backdrop-blur-sm">
-                    <DialogHeader>
-                      <DialogTitle className="text-easyoft-navy">
-                        {selectedFAQ ? "تعديل السؤال" : "إضافة سؤال جديد"}
-                      </DialogTitle>
-                      <DialogDescription className="text-easyoft-darkBlue">
-                        {selectedFAQ ? "قم بتعديل السؤال والإجابة" : "أدخل السؤال والإجابة الجديدة"}
-                      </DialogDescription>
-                    </DialogHeader>
-                    <form onSubmit={handleFAQSubmit} className="space-y-4">
-                      <div>
-                        <Label htmlFor="faq-question" className="text-easyoft-navy">
-                          السؤال
-                        </Label>
-                        <Input
-                          id="faq-question"
-                          value={faqForm.question}
-                          onChange={(e) => setFAQForm({ ...faqForm, question: e.target.value })}
-                          className="border-easyoft-sky focus:border-brand-primary"
-                          required
-                        />
-                      </div>
-
-                      <div>
-                        <Label htmlFor="faq-answer" className="text-easyoft-navy">
-                          الإجابة
-                        </Label>
-                        <Textarea
-                          id="faq-answer"
-                          value={faqForm.answer}
-                          onChange={(e) => setFAQForm({ ...faqForm, answer: e.target.value })}
-                          className="border-easyoft-sky focus:border-brand-primary"
-                          rows={4}
-                          required
-                        />
-                      </div>
-
-                      <div className="flex gap-2 pt-4">
-                        <Button
-                          type="submit"
-                          className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white flex-1"
-                        >
-                          {selectedFAQ ? "تحديث السؤال" : "إضافة السؤال"}
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => setShowFAQDialog(false)}
-                          className="border-easyoft-sky text-easyoft-darkBlue hover:bg-easyoft-sky"
-                        >
-                          إلغاء
-                        </Button>
-                      </div>
-                    </form>
-                  </DialogContent>
-                </Dialog>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-4">
-                  {faqs.map((faq, index) => (
-                    <Card
-                      key={faq.id}
-                      className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 animate-fade-in"
-                      style={{ animationDelay: `${index * 0.05}s` }}
-                    >
-                      <CardContent className="p-6">
-                        <div className="flex items-start gap-4">
-                          <HelpCircle className="w-6 h-6 text-orange-500 mt-1 flex-shrink-0" />
-                          <div className="flex-1">
-                            <h4 className="font-semibold text-easyoft-navy mb-2">{faq.question}</h4>
-                            <p className="text-sm text-easyoft-darkBlue mb-4">{faq.answer}</p>
-                            <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => editFAQ(faq)}
-                                className="border-easyoft-blue text-easyoft-blue hover:bg-easyoft-sky"
-                              >
-                                <Edit className="h-4 w-4 ml-1" />
-                                تعديل
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleDeleteFAQ(faq.id)}
-                                className="border-red-200 text-red-600 hover:bg-red-50"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Contact Tab */}
-          <TabsContent value="contact" className="space-y-6">
-            <div className="grid md:grid-cols-2 gap-6">
-              {/* Contact Settings */}
-              <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
-                <CardHeader>
-                  <CardTitle className="text-easyoft-navy flex items-center gap-2">
-                    <MessageCircle className="h-5 w-5" />
-                    إعدادات صفحة التواصل
-                  </CardTitle>
-                  <CardDescription className="text-easyoft-darkBlue">قم بتخصيص محتوى صفحة التواصل</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleContactSettingsSubmit} className="space-y-4">
-                    <div>
-                      <Label htmlFor="contact_hero_title" className="text-easyoft-navy">
-                        العنوان الرئيسي
-                      </Label>
-                      <Input
-                        id="contact_hero_title"
-                        value={contactSettingsForm.hero_title}
-                        onChange={(e) => setContactSettingsForm({ ...contactSettingsForm, hero_title: e.target.value })}
-                        className="border-easyoft-sky focus:border-brand-primary"
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="contact_hero_subtitle" className="text-easyoft-navy">
-                        العنوان الفرعي
-                      </Label>
-                      <Input
-                        id="contact_hero_subtitle"
-                        value={contactSettingsForm.hero_subtitle}
-                        onChange={(e) =>
-                          setContactSettingsForm({ ...contactSettingsForm, hero_subtitle: e.target.value })
-                        }
-                        className="border-easyoft-sky focus:border-brand-primary"
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="contact_hero_description" className="text-easyoft-navy">
-                        وصف البطل
-                      </Label>
-                      <Textarea
-                        id="contact_hero_description"
-                        value={contactSettingsForm.hero_description}
-                        onChange={(e) =>
-                          setContactSettingsForm({ ...contactSettingsForm, hero_description: e.target.value })
-                        }
-                        className="border-easyoft-sky focus:border-brand-primary"
-                        rows={3}
-                      />
-                    </div>
-
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="contact_form_title" className="text-easyoft-navy">
-                          عنوان النموذج
-                        </Label>
-                        <Input
-                          id="contact_form_title"
-                          value={contactSettingsForm.form_title}
-                          onChange={(e) =>
-                            setContactSettingsForm({ ...contactSettingsForm, form_title: e.target.value })
-                          }
-                          className="border-easyoft-sky focus:border-brand-primary"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="contact_info_title" className="text-easyoft-navy">
-                          عنوان معلومات التواصل
-                        </Label>
-                        <Input
-                          id="contact_info_title"
-                          value={contactSettingsForm.info_title}
-                          onChange={(e) =>
-                            setContactSettingsForm({ ...contactSettingsForm, info_title: e.target.value })
-                          }
-                          className="border-easyoft-sky focus:border-brand-primary"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <Label htmlFor="contact_form_description" className="text-easyoft-navy">
-                        وصف النموذج
-                      </Label>
-                      <Input
-                        id="contact_form_description"
-                        value={contactSettingsForm.form_description}
-                        onChange={(e) =>
-                          setContactSettingsForm({ ...contactSettingsForm, form_description: e.target.value })
-                        }
-                        className="border-easyoft-sky focus:border-brand-primary"
-                      />
-                    </div>
-
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="contact_office_hours" className="text-easyoft-navy">
-                          ساعات العمل
-                        </Label>
-                        <Input
-                          id="contact_office_hours"
-                          value={contactSettingsForm.office_hours}
-                          onChange={(e) =>
-                            setContactSettingsForm({ ...contactSettingsForm, office_hours: e.target.value })
-                          }
-                          className="border-easyoft-sky focus:border-brand-primary"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="contact_response_time" className="text-easyoft-navy">
-                          وقت الاستجابة
-                        </Label>
-                        <Input
-                          id="contact_response_time"
-                          value={contactSettingsForm.response_time}
-                          onChange={(e) =>
-                            setContactSettingsForm({ ...contactSettingsForm, response_time: e.target.value })
-                          }
-                          className="border-easyoft-sky focus:border-brand-primary"
-                        />
-                      </div>
-                    </div>
-
-                    <Button
-                      type="submit"
-                      className="bg-gradient-to-r from-brand-primary to-easyoft-blue hover:from-easyoft-blue hover:to-brand-primary text-white w-full"
-                    >
-                      حفظ إعدادات الصفحة
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
-
-              {/* Contact Info */}
-              <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
-                <CardHeader>
-                  <CardTitle className="text-easyoft-navy flex items-center gap-2">
-                    <Phone className="h-5 w-5" />
-                    معلومات التواصل
-                  </CardTitle>
-                  <CardDescription className="text-easyoft-darkBlue">قم بتحديث معلومات التواصل</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleContactInfoSubmit} className="space-y-4">
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="contact_phone" className="text-easyoft-navy">
-                          رقم الهاتف
-                        </Label>
-                        <Input
-                          id="contact_phone"
-                          value={contactInfoForm.phone}
-                          onChange={(e) => setContactInfoForm({ ...contactInfoForm, phone: e.target.value })}
-                          className="border-easyoft-sky focus:border-brand-primary"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="contact_email" className="text-easyoft-navy">
-                          البريد الإلكتروني
-                        </Label>
-                        <Input
-                          id="contact_email"
-                          type="email"
-                          value={contactInfoForm.email}
-                          onChange={(e) => setContactInfoForm({ ...contactInfoForm, email: e.target.value })}
-                          className="border-easyoft-sky focus:border-brand-primary"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <Label htmlFor="contact_address" className="text-easyoft-navy">
-                        العنوان
-                      </Label>
-                      <Textarea
-                        id="contact_address"
-                        value={contactInfoForm.address}
-                        onChange={(e) => setContactInfoForm({ ...contactInfoForm, address: e.target.value })}
-                        className="border-easyoft-sky focus:border-brand-primary"
-                        rows={3}
-                      />
-                    </div>
-
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="contact_working_hours" className="text-easyoft-navy">
-                          ساعات العمل
-                        </Label>
-                        <Input
-                          id="contact_working_hours"
-                          value={contactInfoForm.working_hours}
-                          onChange={(e) => setContactInfoForm({ ...contactInfoForm, working_hours: e.target.value })}
-                          className="border-easyoft-sky focus:border-brand-primary"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="contact_whatsapp" className="text-easyoft-navy">
-                          واتساب
-                        </Label>
-                        <Input
-                          id="contact_whatsapp"
-                          value={contactInfoForm.whatsapp}
-                          onChange={(e) => setContactInfoForm({ ...contactInfoForm, whatsapp: e.target.value })}
-                          className="border-easyoft-sky focus:border-brand-primary"
-                        />
-                      </div>
-                    </div>
-
-                    <Button
-                      type="submit"
-                      className="bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white w-full"
-                    >
-                      حفظ معلومات التواصل
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          {/* Settings Tab */}
-          <TabsContent value="settings" className="space-y-6">
-            <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
-              <CardHeader>
-                <CardTitle className="text-easyoft-navy flex items-center gap-2">
-                  <Settings className="h-5 w-5" />
-                  إعدادات الموقع العامة
-                </CardTitle>
-                <CardDescription className="text-easyoft-darkBlue">قم بتخصيص إعدادات الموقع العامة</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Alert className="border-easyoft-blue/20 bg-easyoft-sky/50">
-                  <AlertDescription className="text-easyoft-darkBlue">
-                    تم إضافة التحكم الكامل في صفحات "من نحن" و "التواصل"! يمكنك الآن تعديل جميع النصوص والمحتوى وإدارة
-                    أعضاء الفريق والخدمات والإحصائيات والأسئلة الشائعة ومعلومات التواصل من خلال التبويبات المختلفة.
-                  </AlertDescription>
-                </Alert>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-      </div>
-    </div>
-  )
-}
+                \

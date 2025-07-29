@@ -6,9 +6,10 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { ShoppingCart, Star, ArrowRight, Shield, Truck, RefreshCw, Phone, Plus, Sparkles } from "lucide-react"
+import { ShoppingCart, Star, ArrowRight, Shield, Truck, RefreshCw, Plus } from "lucide-react"
 import { SearchDialog } from "@/components/search-dialog"
 import { MobileNav } from "@/components/mobile-nav"
+import { HeroSlider, type HeroSlide } from "@/components/hero-slider"
 import { useCart } from "@/hooks/use-cart"
 import { toast } from "@/hooks/use-toast"
 
@@ -17,6 +18,7 @@ import { db, type Product, type Category, type SiteSettings, type ContactInfo } 
 export default function HomePage() {
   const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<Category[]>([])
+  const [heroSlides, setHeroSlides] = useState<HeroSlide[]>([])
   const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null)
   const [contactInfo, setContactInfo] = useState<ContactInfo | null>(null)
   const [loading, setLoading] = useState(true)
@@ -28,15 +30,17 @@ export default function HomePage() {
 
   const loadData = async () => {
     try {
-      const [productsData, categoriesData, settingsData, contactData] = await Promise.all([
+      const [productsData, categoriesData, heroSlidesData, settingsData, contactData] = await Promise.all([
         db.getFeaturedProducts(),
         db.getCategories(),
+        db.getHeroSlides(),
         db.getSiteSettings(),
         db.getContactInfo(),
       ])
 
       setProducts(productsData)
       setCategories(categoriesData)
+      setHeroSlides(heroSlidesData)
       setSiteSettings(settingsData)
       setContactInfo(contactData)
     } catch (error) {
@@ -51,7 +55,7 @@ export default function HomePage() {
       id: product.id,
       name: product.name,
       price: product.price,
-      image: product.image,
+      image: product.local_image_path || product.image,
       category: product.category,
       brand: product.brand,
     })
@@ -102,7 +106,7 @@ export default function HomePage() {
                 className="text-brand-primary font-semibold hover:text-easyoft-lightBlue transition-all duration-300 relative group"
               >
                 الرئيسية
-                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-brand-primary to-easyoft-lightBlue group-hover:w-full transition-all duration-300"></span>
+                <span className="absolute bottom-0 left-0 w-full h-0.5 bg-gradient-to-r from-brand-primary to-easyoft-lightBlue"></span>
               </Link>
               {categories.map((category) => (
                 <Link
@@ -162,51 +166,8 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="relative bg-gradient-to-l from-brand-primary via-easyoft-blue to-easyoft-darkBlue text-white py-20 overflow-hidden">
-        <div className="absolute inset-0 bg-black/10"></div>
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent animate-shimmer"></div>
-        <div className="container mx-auto px-4 relative z-10">
-          <div className="max-w-4xl animate-fade-in">
-            <h1 className="text-4xl md:text-6xl font-bold mb-6 leading-tight animate-slide-in">
-              {siteSettings?.hero_title || "حلول الأمان المتقدمة"}
-              <Sparkles className="inline-block mr-4 h-8 w-8 md:h-12 md:w-12 text-yellow-300 animate-bounce-gentle" />
-            </h1>
-            <p
-              className="text-xl md:text-2xl mb-8 text-gray-100 leading-relaxed animate-slide-in"
-              style={{ animationDelay: "0.2s" }}
-            >
-              {siteSettings?.hero_subtitle ||
-                "نقدم أحدث تقنيات الأمان والمنازل الذكية لحماية ممتلكاتك وتوفير الراحة والأمان"}
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 animate-slide-in" style={{ animationDelay: "0.4s" }}>
-              <Link href="/products">
-                <Button
-                  size="lg"
-                  className="bg-white text-brand-primary hover:bg-easyoft-sky hover:scale-105 text-lg px-8 py-4 rounded-xl shadow-xl transition-all duration-300 group"
-                >
-                  <span className="flex items-center gap-2">
-                    تصفح المنتجات
-                    <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform duration-300" />
-                  </span>
-                </Button>
-              </Link>
-              <Link href="/contact">
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="border-2 border-white text-white hover:bg-white hover:text-brand-primary hover:scale-105 text-lg px-8 py-4 bg-transparent rounded-xl transition-all duration-300 group"
-                >
-                  <span className="flex items-center gap-2">
-                    تواصل معنا
-                    <Phone className="h-5 w-5 group-hover:rotate-12 transition-transform duration-300" />
-                  </span>
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* Hero Slider */}
+      <HeroSlider slides={heroSlides} autoPlay={true} autoPlayInterval={6000} />
 
       {/* Categories Section */}
       <section className="py-16 bg-white">
@@ -226,7 +187,7 @@ export default function HomePage() {
                 >
                   <div className="relative h-48 overflow-hidden">
                     <Image
-                      src={category.image || "/placeholder.svg"}
+                      src={category.local_image_path || category.image || "/placeholder.svg"}
                       alt={category.name}
                       fill
                       className="object-cover group-hover:scale-110 transition-transform duration-500"
@@ -272,7 +233,7 @@ export default function HomePage() {
               >
                 <div className="relative h-48 overflow-hidden">
                   <Image
-                    src={product.image || "/placeholder.svg"}
+                    src={product.local_image_path || product.image || "/placeholder.svg"}
                     alt={product.name}
                     fill
                     className="object-cover group-hover:scale-110 transition-transform duration-500"
