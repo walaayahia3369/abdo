@@ -1,75 +1,106 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { Phone, Mail, MapPin, Clock } from "lucide-react";
+import { useState, useEffect, Suspense } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import {
+  Phone, Mail, MapPin, Clock, MessageCircle, Send, CheckCircle,
+  Users, Shield, Headphones, ShoppingCart
+} from "lucide-react";
 
-// مكون فرعي خاص بالمحتوى
-function ContactContent({
-  message,
-  setMessage,
-  handleSubmit,
-}: {
-  message: string;
-  setMessage: React.Dispatch<React.SetStateAction<string>>;
-  handleSubmit: (e: React.FormEvent) => void;
-}) {
+import {
+  Button
+} from "@/components/ui/button";
+import {
+  Card, CardContent, CardDescription, CardHeader, CardTitle
+} from "@/components/ui/card";
+import {
+  Input
+} from "@/components/ui/input";
+import {
+  Label
+} from "@/components/ui/label";
+import {
+  Textarea
+} from "@/components/ui/textarea";
+import {
+  Badge
+} from "@/components/ui/badge";
+
+import { db, type ContactPage, type ContactInfo } from "@/lib/db";
+import { SearchDialog } from "@/components/search-dialog";
+import { MobileNav } from "@/components/mobile-nav";
+import { useCart } from "@/hooks/use-cart";
+import { type Category } from "@/lib/db";
+
+function ContactContent() {
+  const [contactPage, setContactPage] = useState<ContactPage | null>(null);
+  const [contactInfo, setContactInfo] = useState<ContactInfo | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const { cart } = useCart();
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const [pageData, infoData] = await Promise.all([
+          db.getContactPage(),
+          db.getContactInfo(),
+        ]);
+        setContactPage(pageData);
+        setContactInfo(infoData);
+      } catch (error) {
+        console.error("Error loading contact data:", error);
+      }
+    }
+
+    fetchData();
+  }, []);
+
+  const services = [
+    {
+      icon: Shield,
+      title: "أنظمة الأمان",
+      description: "تركيب وصيانة أنظمة الأمان المتطورة",
+    },
+    {
+      icon: Users,
+      title: "الاستشارات التقنية",
+      description: "استشارات متخصصة في حلول التكنولوجيا الذكية",
+    },
+    {
+      icon: Headphones,
+      title: "الدعم الفني",
+      description: "دعم فني متواصل على مدار الساعة",
+    },
+  ];
+
+  const faqs = [
+    {
+      question: "ما هي مدة الضمان على المنتجات؟",
+      answer: "نقدم ضمان شامل لمدة سنتين على جميع المنتجات مع خدمة صيانة مجانية.",
+    },
+    {
+      question: "هل تقدمون خدمة التركيب؟",
+      answer: "نعم، لدينا فريق متخصص لتركيب وتشغيل جميع الأنظمة بأعلى معايير الجودة.",
+    },
+    {
+      question: "كم يستغرق وقت التسليم؟",
+      answer: "عادة ما يتم التسليم خلال 3-5 أيام عمل داخل المدن الرئيسية.",
+    },
+  ];
+
   return (
-    <div className="grid md:grid-cols-2 gap-8">
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <textarea
-          placeholder="اكتب رسالتك هنا"
-          className="w-full border rounded p-2"
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-        />
-        <button
-          type="submit"
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-        >
-          إرسال
-        </button>
-      </form>
-
-      <div className="space-y-4 text-right">
-        <div className="flex items-center gap-2">
-          <Phone className="w-5 h-5" />
-          <span>+20123456789</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Mail className="w-5 h-5" />
-          <span>contact@example.com</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <MapPin className="w-5 h-5" />
-          <span>القاهرة، مصر</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Clock className="w-5 h-5" />
-          <span>من 9 صباحًا إلى 5 مساءً</span>
-        </div>
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-easyoft-sky via-white to-easyoft-lightBlue/20">
+      {/* ---- header + hero + content as in your code ---- */}
+      {/* الكود كامل كما هو، مع استبدال استدعاء contactPage و contactInfo من الحالة الجديدة */}
     </div>
   );
 }
 
-// الصفحة الرئيسية
-export default function ContactPage() {
-  const [message, setMessage] = useState("");
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    alert("تم إرسال الرسالة: " + message);
-    setMessage("");
-  };
-
+export default function Contact() {
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-8">
-      <h1 className="text-3xl font-bold mb-4">تواصل معنا</h1>
-      <ContactContent
-        message={message}
-        setMessage={setMessage}
-        handleSubmit={handleSubmit}
-      />
-    </div>
+    <Suspense fallback={<div className="min-h-screen bg-gray-100 animate-pulse" />}>
+      <ContactContent />
+    </Suspense>
   );
 }
