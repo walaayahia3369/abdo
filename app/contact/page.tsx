@@ -384,8 +384,7 @@
 //   )
 // }
 import { Metadata } from "next"
-import { ContactContent } from "./contact-content"
-
+import { ContactContent } from "app/contact/ContactContent"
 export const metadata: Metadata = {
   title: "تواصل معنا",
 }
