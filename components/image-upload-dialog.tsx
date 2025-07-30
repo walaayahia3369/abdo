@@ -24,10 +24,14 @@ import { imageUploadManager, type UploadedImage } from "@/lib/image-upload"
 import { toast } from "@/hooks/use-toast"
 
 interface ImageUploadDialogProps {
-  onImageSelect: (imagePath: string) => void
+  // onImageSelect: (imagePath: string) => void
+onImageSelect: (image: UploadedImage) => void
+
   category?: string
   currentImage?: string
   trigger?: React.ReactNode
+  children?: React.ReactNode // ✅ أضف ده
+
 }
 
 export function ImageUploadDialog({
@@ -99,8 +103,10 @@ export function ImageUploadDialog({
     }
   }
 
-  const handleImageSelect = (imagePath: string) => {
-    onImageSelect(imagePath)
+  /* const handleImageSelect = (imagePath: string) => {
+     onImageSelect(imagePath)*/
+  const handleImageSelect = (image: UploadedImage) => {
+  onImageSelect(image) // ✅ مش image.filePath
     setOpen(false)
     toast({
       title: "تم اختيار الصورة! ✅",
@@ -274,7 +280,9 @@ export function ImageUploadDialog({
                       <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                         <Button
                           size="sm"
-                          onClick={() => handleImageSelect(image.filePath)}
+                          //onClick={() => handleImageSelect(image.filePath)}
+                          onClick={() => handleImageSelect(image)}
+
                           className="bg-green-600 hover:bg-green-700"
                         >
                           اختيار

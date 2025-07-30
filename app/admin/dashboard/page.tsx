@@ -296,19 +296,19 @@ export default function AdminDashboard() {
 
   // Image selection handlers
   const handleProductImageSelect = (image: UploadedImage) => {
-    setProductForm({ ...productForm, local_image_path: image.file_path, image: image.file_path })
+    setProductForm({ ...productForm, local_image_path: image.filePath, image: image.filePath })
   }
 
   const handleCategoryImageSelect = (image: UploadedImage) => {
-    setCategoryForm({ ...categoryForm, local_image_path: image.file_path, image: image.file_path })
+    setCategoryForm({ ...categoryForm, local_image_path: image.filePath, image: image.filePath })
   }
 
   const handleHeroSlideImageSelect = (image: UploadedImage) => {
-    setHeroSlideForm({ ...heroSlideForm, image_url: image.file_path })
+    setHeroSlideForm({ ...heroSlideForm, image_url: image.filePath })
   }
 
   const handleTeamImageSelect = (image: UploadedImage) => {
-    setTeamForm({ ...teamForm, local_image_path: image.file_path, image: image.file_path })
+    setTeamForm({ ...teamForm, local_image_path: image.filePath, image: image.filePath })
   }
 
   // Hero Slide handlers
@@ -401,13 +401,23 @@ export default function AdminDashboard() {
     e.preventDefault()
     try {
       const productData = {
-        ...productForm,
-        price: Number.parseFloat(productForm.price),
-        original_price: productForm.original_price ? Number.parseFloat(productForm.original_price) : undefined,
-        features: productForm.features.split("\n").filter((f) => f.trim()),
-        rating: Number.parseFloat(productForm.rating),
-        reviews: Number.parseInt(productForm.reviews),
-      }
+        // ...productForm,
+        // price: Number.parseFloat(productForm.price),
+        // original_price: productForm.original_price ? Number.parseFloat(productForm.original_price) : undefined,
+        // features: productForm.features.split("\n").filter((f) => f.trim()),
+        // rating: Number.parseFloat(productForm.rating),
+        // reviews: Number.parseInt(productForm.reviews),
+
+          ...productForm,
+          price: Number.parseFloat(productForm.price),
+          original_price: productForm.original_price ? Number.parseFloat(productForm.original_price) : undefined,
+          features: productForm.features.split("\n").filter((f) => f.trim()),
+          rating: Number.parseFloat(productForm.rating),
+          reviews: Number.parseInt(productForm.reviews),
+          specifications: {}, // صح
+          stock_quantity: 0,          // ← قيمة ابتدائية
+              
+        }
 
       if (selectedProduct) {
         await db.updateProduct(selectedProduct.id, productData)
@@ -2166,3 +2176,20 @@ export default function AdminDashboard() {
                             <Trash2 className="h-4 w-4" />
                           </Button>
                 \
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
+    </div>
+  )
+}
+        
+
+
+

@@ -23,7 +23,8 @@ export default function CategoryPage() {
   const [sortBy, setSortBy] = useState("newest")
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
 
-  const { addItem } = useCart()
+  // const { addItem } = useCart()
+  const { cart, addToCart } = useCart()
 
   useEffect(() => {
     const fetchData = async () => {
@@ -49,17 +50,26 @@ export default function CategoryPage() {
     fetchData()
   }, [categorySlug])
 
-  const handleAddToCart = (product: Product) => {
-    addItem({
-      id: product.id.toString(),
-      name: product.name,
-      price: product.price,
-      image: product.image,
-      quantity: 1,
-    })
+  // const handleAddToCart = (product: Product) => {
+  //   addItem({
+  //     id: product.id.toString(),
+  //     name: product.name,
+  //     price: product.price,
+  //     image: product.image,
+  //     quantity: 1,
+  //   })
+
+    const handleAddToCart = (product: Product) => {
+      addToCart({
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        image: product.local_image_path || product.image,
+        category: product.category,
+        brand: product.brand,
+      })
     toast.success(`تم إضافة ${product.name} إلى السلة`)
   }
-
   // Sort products
   const sortedProducts = [...products].sort((a, b) => {
     switch (sortBy) {

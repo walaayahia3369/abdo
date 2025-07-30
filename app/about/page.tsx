@@ -9,12 +9,27 @@ import Link from "next/link"
 import Image from "next/image"
 import { db, type AboutPage, type TeamMember, type Service, type Stat } from "@/lib/db"
 
+
+import { SearchDialog } from "@/components/search-dialog"
+import { MobileNav } from "@/components/mobile-nav"
+import { HeroSlider, type HeroSlide } from "@/components/hero-slider"
+import { useCart } from "@/hooks/use-cart"
+import { toast } from "@/hooks/use-toast"
+import {  type Product, type Category, type SiteSettings, type ContactInfo } from "@/lib/db"
+import { ShoppingCart, Star, ArrowRight, Truck, RefreshCw, Plus } from "lucide-react"
+
+
 export default function AboutPageComponent() {
   const [aboutData, setAboutData] = useState<AboutPage | null>(null)
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
   const [services, setServices] = useState<Service[]>([])
   const [stats, setStats] = useState<Stat[]>([])
   const [loading, setLoading] = useState(true)
+
+
+  const [categories, setCategories] = useState<Category[]>([])
+  const { cart, addToCart } = useCart()
+  
 
   useEffect(() => {
     loadData()
@@ -70,6 +85,88 @@ export default function AboutPageComponent() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+            {/* Header */}
+            <header className="bg-white/95 backdrop-blur-md shadow-lg border-b border-easyoft-sky sticky top-0 z-50">
+              <div className="container mx-auto px-4">
+                <div className="flex items-center justify-between h-16">
+                  <Link href="/" className="flex items-center space-x-4 space-x-reverse group">
+                    <div className="relative">
+                      <Image
+                        src="/easyoft-logo.png"
+                        alt="EASYoft Logo"
+                        width={120}
+                        height={60}
+                        className="h-12 w-auto group-hover:scale-105 transition-transform duration-300"
+                      />
+                      <div className="absolute inset-0 bg-gradient-shimmer opacity-0 group-hover:opacity-100 animate-shimmer"></div>
+                    </div>
+                  </Link>
+      
+                  <nav className="hidden lg:flex items-center space-x-6 space-x-reverse">
+                    <Link
+                      href="/"
+                      className="text-brand-primary font-semibold hover:text-easyoft-lightBlue transition-all duration-300 relative group"
+                    >
+                      الرئيسية
+                      <span className="absolute bottom-0 left-0 w-full h-0.5 bg-gradient-to-r from-brand-primary to-easyoft-lightBlue"></span>
+                    </Link>
+                    {categories.map((category) => (
+                      <Link
+                        key={category.id}
+                        href={`/category/${category.slug}`}
+                        className="text-easyoft-darkBlue hover:text-brand-primary whitespace-nowrap transition-all duration-300 relative group"
+                      >
+                        {category.name}
+                        <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-brand-primary to-easyoft-lightBlue group-hover:w-full transition-all duration-300"></span>
+                      </Link>
+                    ))}
+                    <Link
+                      href="/products"
+                      className="text-easyoft-darkBlue hover:text-brand-primary transition-all duration-300 relative group"
+                    >
+                      كل المنتجات
+                      <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-brand-primary to-easyoft-lightBlue group-hover:w-full transition-all duration-300"></span>
+                    </Link>
+                    <Link
+                      href="/about"
+                      className="text-easyoft-darkBlue hover:text-brand-primary transition-all duration-300 relative group"
+                    >
+                      من نحن
+                      <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-brand-primary to-easyoft-lightBlue group-hover:w-full transition-all duration-300"></span>
+                    </Link>
+                    <Link
+                      href="/contact"
+                      className="text-easyoft-darkBlue hover:text-brand-primary transition-all duration-300 relative group"
+                    >
+                      تواصل معنا
+                      <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-brand-primary to-easyoft-lightBlue group-hover:w-full transition-all duration-300"></span>
+                    </Link>
+                  </nav>
+      
+                  <div className="flex items-center space-x-4 space-x-reverse">
+                    <SearchDialog />
+                    <Link href="/cart">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="relative group hover:bg-easyoft-sky transition-all duration-300"
+                      >
+                        <ShoppingCart className="h-5 w-5 text-easyoft-blue group-hover:scale-110 transition-transform duration-200" />
+                        {cart.itemCount > 0 && (
+                          <span className="absolute -top-2 -right-2 bg-gradient-to-r from-red-500 to-red-600 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center animate-bounce-gentle shadow-lg">
+                            {cart.itemCount}
+                          </span>
+                        )}
+                      </Button>
+                    </Link>
+                    <span className="text-sm font-semibold text-easyoft-darkBlue bg-easyoft-sky px-3 py-1 rounded-full">
+                      {cart.total.toLocaleString()} ر.س
+                    </span>
+                    <MobileNav categories={categories} />
+                  </div>
+                </div>
+              </div>
+            </header>
       {/* Hero Section */}
       <section className="relative py-20 px-4 text-center bg-gradient-to-r from-blue-600 to-purple-600 text-white">
         <div className="absolute inset-0 bg-black/20"></div>
