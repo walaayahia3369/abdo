@@ -79,11 +79,33 @@ export default function ProductPage() {
     })
   }
 
+    const handleAddToCartWith = () => {
+    if (!product) return
+
+    for (let i = 0; i < quantity; i++) {
+      addToCart({
+        id: product.id,
+        name: product.name,
+        price: product.installation_price,
+        image: product.image,
+        category: product.category,
+        brand: product.brand,
+      })
+    }
+
+    toast({
+      title: "تم إضافة المنتج للسلة! 🛒",
+      description: `تم إضافة ${quantity} من ${product.name} إلى سلة التسوق`,
+      duration: 3000,
+    })
+  }
+
   const increaseQuantity = () => {
     if (product && quantity < product.stock_quantity) {
       setQuantity((prev) => prev + 1)
     }
   }
+  
 
   const decreaseQuantity = () => {
     if (quantity > 1) {
@@ -126,7 +148,7 @@ export default function ProductPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-white to-easyoft-sky" dir="rtl">
       {/* Header */}
-      <header className="bg-white/95 backdrop-blur-md shadow-lg border-b border-easyoft-sky sticky top-0 z-50">
+      {/* <header className="bg-white/95 backdrop-blur-md shadow-lg border-b border-easyoft-sky sticky top-0 z-50">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             <Link href="/" className="flex items-center space-x-4 space-x-reverse group">
@@ -206,8 +228,115 @@ export default function ProductPage() {
             </div>
           </div>
         </div>
-      </header>
+      </header> */}
+      <header className="bg-white/95 backdrop-blur-md shadow-lg border-b border-easyoft-sky sticky top-0 z-50">
+        <div className="container mx-auto px-4">
+          <div className="flex items-center justify-between h-16">
+            <Link href="/" className="flex items-center space-x-4 space-x-reverse group">
+              <div className="relative">
+                <Image
+                  src="/easyoft-logo.png"
+                  alt="EASYoft Logo"
+                  width={120}
+                  height={60}
+                  className="h-12 w-auto group-hover:scale-105 transition-transform duration-300"
+                />
+                <div className="absolute inset-0 bg-gradient-shimmer opacity-0 group-hover:opacity-100 animate-shimmer"></div>
+              </div>
+            </Link>
 
+<nav className="hidden lg:flex items-center space-x-6 space-x-reverse">
+  <Link
+    href="/"
+    className="text-brand-primary font-semibold hover:text-easyoft-lightBlue transition-all duration-300 relative group"
+  >
+    الرئيسية
+    <span className="absolute bottom-0 left-0 w-full h-0.5 bg-gradient-to-r from-brand-primary to-easyoft-lightBlue"></span>
+  </Link>
+  
+  {/* عرض أول 3 فئات فقط */}
+  {categories.slice(0, 3).map((category) => (
+    <Link
+      key={category.id}
+      href={`/category/${category.slug}`}
+      className="text-easyoft-darkBlue hover:text-brand-primary whitespace-nowrap transition-all duration-300 relative group"
+    >
+      {category.name}
+      <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-brand-primary to-easyoft-lightBlue group-hover:w-full transition-all duration-300"></span>
+    </Link>
+  ))}
+  
+  {/* عرض قائمة "المزيد" عند وجود أكثر من 3 فئات */}
+  {categories.length > 3 && (
+    <div className="relative group">
+      <button className="text-easyoft-darkBlue hover:text-brand-primary whitespace-nowrap transition-all duration-300 relative">
+        المزيد
+        <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-brand-primary to-easyoft-lightBlue group-hover:w-full transition-all duration-300"></span>
+      </button>
+      
+      {/* القائمة المنسدلة */}
+      <div className="absolute top-full right-0 mt-2 w-48 rounded-lg shadow-xl bg-white border border-easyoft-sky overflow-hidden z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform group-hover:translate-y-0 translate-y-1">
+        {categories.slice(3).map((category) => (
+          <Link
+            key={category.id}
+            href={`/category/${category.slug}`}
+            className="block px-4 py-3 text-sm text-easyoft-darkBlue hover:bg-easyoft-sky/50 hover:text-brand-primary transition-colors duration-200 border-b border-easyoft-sky/20 last:border-0"
+          >
+            {category.name}
+          </Link>
+        ))}
+      </div>
+    </div>
+  )}
+  
+  {/* الروابط الثابتة */}
+  <Link
+    href="/products"
+    className="text-easyoft-darkBlue hover:text-brand-primary transition-all duration-300 relative group"
+  >
+    كل المنتجات
+    <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-brand-primary to-easyoft-lightBlue group-hover:w-full transition-all duration-300"></span>
+  </Link>
+  <Link
+    href="/about"
+    className="text-easyoft-darkBlue hover:text-brand-primary transition-all duration-300 relative group"
+  >
+    من نحن
+    <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-brand-primary to-easyoft-lightBlue group-hover:w-full transition-all duration-300"></span>
+  </Link>
+  <Link
+    href="/contact"
+    className="text-easyoft-darkBlue hover:text-brand-primary transition-all duration-300 relative group"
+  >
+    تواصل معنا
+    <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-brand-primary to-easyoft-lightBlue group-hover:w-full transition-all duration-300"></span>
+  </Link>
+</nav>
+
+            <div className="flex items-center space-x-4 space-x-reverse">
+              <SearchDialog />
+              <Link href="/cart">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="relative group hover:bg-easyoft-sky transition-all duration-300"
+                >
+                  <ShoppingCart className="h-5 w-5 text-easyoft-blue group-hover:scale-110 transition-transform duration-200" />
+                  {cart.itemCount > 0 && (
+                    <span className="absolute -top-2 -right-2 bg-gradient-to-r from-red-500 to-red-600 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center animate-bounce-gentle shadow-lg">
+                      {cart.itemCount}
+                    </span>
+                  )}
+                </Button>
+              </Link>
+              <span className="text-sm font-semibold text-easyoft-darkBlue bg-easyoft-sky px-3 py-1 rounded-full">
+                {cart.total.toLocaleString()} ر.س
+              </span>
+              <MobileNav categories={categories} />
+            </div>
+          </div>
+        </div>
+      </header>
       {/* Breadcrumb */}
       <div className="bg-white border-b border-easyoft-sky">
         <div className="container mx-auto px-4 py-4">
@@ -371,6 +500,18 @@ export default function ProductPage() {
                   <ShoppingCart className="h-5 w-5 ml-2 group-hover:scale-110 transition-transform duration-300" />
                   {product.in_stock ? "أضف للسلة" : "غير متوفر"}
                 </Button>
+
+                <Button
+                  size="lg"
+                  onClick={handleAddToCartWith}
+                  disabled={!product.in_stock}
+                  className="flex-1 bg-gradient-to-r from-brand-primary to-easyoft-blue hover:from-easyoft-blue hover:to-brand-primary text-white text-lg px-8 py-4 rounded-xl shadow-xl hover:shadow-2xl hover:scale-105 transition-all duration-300 group"
+                >
+                  <ShoppingCart className="h-5 w-5 ml-2 group-hover:scale-110 transition-transform duration-300" />
+                  {product.in_stock ?  "  بالتركيب أضف للسلة " : "غير متوفر"}
+                </Button>
+
+                                
               </div>
 
               {/* Features */}
