@@ -14,12 +14,21 @@ import Image from "next/image"
 import { Suspense } from "react"
 
 const inter = Inter({ subsets: ["latin"] })
-
 export const metadata: Metadata = {
   title: "EazySoft - حلول الأمان والتكنولوجيا الذكية",
-  description: "نقدم أحدث تقنيات الأمان والمنازل الذكية لحماية ممتلكاتك وتوفير الراحة والأمان",
-    generator: 'v0.dev'
-}
+  description:
+    "نقدم أحدث تقنيات الأمان والمنازل الذكية لحماية ممتلكاتك وتوفير الراحة والأمان",
+  generator: "easysoft.com",
+  icons: {
+    icon: "public/easyoft-logo.png", // مسار اللوجو كـ favicon
+  },
+  openGraph: {
+    title: "EazySoft - حلول الأمان والتكنولوجيا الذكية",
+    description:
+      "نقدم أحدث تقنيات الأمان والمنازل الذكية لحماية ممتلكاتك وتوفير الراحة والأمان",
+    images: ["public/easyoft-logo.png"], // صورة تظهر عند مشاركة الرابط
+  },
+};
 
 function Navigation() {
   return (
