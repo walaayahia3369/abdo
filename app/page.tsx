@@ -59,7 +59,22 @@ export default function HomePage() {
       category: product.category,
       brand: product.brand,
     })
+    toast({
+      title: "تم إضافة المنتج للسلة! 🛒",
+      description: `تم إضافة ${product.name} إلى سلة التسوق`,
+      duration: 3000,
+    })
+  }
 
+    const handleAddToCartWith = (product: Product) => {
+    addToCart({
+      id: product.id,
+      name: product.name,
+      price: product.installation_price,
+      image: product.local_image_path || product.image,
+      category: product.category,
+      brand: product.brand,
+    })
     toast({
       title: "تم إضافة المنتج للسلة! 🛒",
       description: `تم إضافة ${product.name} إلى سلة التسوق`,
@@ -100,46 +115,73 @@ export default function HomePage() {
               </div>
             </Link>
 
-            <nav className="hidden lg:flex items-center space-x-6 space-x-reverse">
-              <Link
-                href="/"
-                className="text-brand-primary font-semibold hover:text-easyoft-lightBlue transition-all duration-300 relative group"
-              >
-                الرئيسية
-                <span className="absolute bottom-0 left-0 w-full h-0.5 bg-gradient-to-r from-brand-primary to-easyoft-lightBlue"></span>
-              </Link>
-              {categories.map((category) => (
-                <Link
-                  key={category.id}
-                  href={`/category/${category.slug}`}
-                  className="text-easyoft-darkBlue hover:text-brand-primary whitespace-nowrap transition-all duration-300 relative group"
-                >
-                  {category.name}
-                  <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-brand-primary to-easyoft-lightBlue group-hover:w-full transition-all duration-300"></span>
-                </Link>
-              ))}
-              <Link
-                href="/products"
-                className="text-easyoft-darkBlue hover:text-brand-primary transition-all duration-300 relative group"
-              >
-                كل المنتجات
-                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-brand-primary to-easyoft-lightBlue group-hover:w-full transition-all duration-300"></span>
-              </Link>
-              <Link
-                href="/about"
-                className="text-easyoft-darkBlue hover:text-brand-primary transition-all duration-300 relative group"
-              >
-                من نحن
-                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-brand-primary to-easyoft-lightBlue group-hover:w-full transition-all duration-300"></span>
-              </Link>
-              <Link
-                href="/contact"
-                className="text-easyoft-darkBlue hover:text-brand-primary transition-all duration-300 relative group"
-              >
-                تواصل معنا
-                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-brand-primary to-easyoft-lightBlue group-hover:w-full transition-all duration-300"></span>
-              </Link>
-            </nav>
+<nav className="hidden lg:flex items-center space-x-6 space-x-reverse">
+  <Link
+    href="/"
+    className="text-brand-primary font-semibold hover:text-easyoft-lightBlue transition-all duration-300 relative group"
+  >
+    الرئيسية
+    <span className="absolute bottom-0 left-0 w-full h-0.5 bg-gradient-to-r from-brand-primary to-easyoft-lightBlue"></span>
+  </Link>
+  
+  {/* عرض أول 3 فئات فقط */}
+  {categories.slice(0, 3).map((category) => (
+    <Link
+      key={category.id}
+      href={`/category/${category.slug}`}
+      className="text-easyoft-darkBlue hover:text-brand-primary whitespace-nowrap transition-all duration-300 relative group"
+    >
+      {category.name}
+      <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-brand-primary to-easyoft-lightBlue group-hover:w-full transition-all duration-300"></span>
+    </Link>
+  ))}
+  
+  {/* عرض قائمة "المزيد" عند وجود أكثر من 3 فئات */}
+  {categories.length > 3 && (
+    <div className="relative group">
+      <button className="text-easyoft-darkBlue hover:text-brand-primary whitespace-nowrap transition-all duration-300 relative">
+        المزيد
+        <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-brand-primary to-easyoft-lightBlue group-hover:w-full transition-all duration-300"></span>
+      </button>
+      
+      {/* القائمة المنسدلة */}
+      <div className="absolute top-full right-0 mt-2 w-48 rounded-lg shadow-xl bg-white border border-easyoft-sky overflow-hidden z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform group-hover:translate-y-0 translate-y-1">
+        {categories.slice(3).map((category) => (
+          <Link
+            key={category.id}
+            href={`/category/${category.slug}`}
+            className="block px-4 py-3 text-sm text-easyoft-darkBlue hover:bg-easyoft-sky/50 hover:text-brand-primary transition-colors duration-200 border-b border-easyoft-sky/20 last:border-0"
+          >
+            {category.name}
+          </Link>
+        ))}
+      </div>
+    </div>
+  )}
+  
+  {/* الروابط الثابتة */}
+  <Link
+    href="/products"
+    className="text-easyoft-darkBlue hover:text-brand-primary transition-all duration-300 relative group"
+  >
+    كل المنتجات
+    <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-brand-primary to-easyoft-lightBlue group-hover:w-full transition-all duration-300"></span>
+  </Link>
+  <Link
+    href="/about"
+    className="text-easyoft-darkBlue hover:text-brand-primary transition-all duration-300 relative group"
+  >
+    من نحن
+    <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-brand-primary to-easyoft-lightBlue group-hover:w-full transition-all duration-300"></span>
+  </Link>
+  <Link
+    href="/contact"
+    className="text-easyoft-darkBlue hover:text-brand-primary transition-all duration-300 relative group"
+  >
+    تواصل معنا
+    <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-brand-primary to-easyoft-lightBlue group-hover:w-full transition-all duration-300"></span>
+  </Link>
+</nav>
 
             <div className="flex items-center space-x-4 space-x-reverse">
               <SearchDialog />
@@ -195,9 +237,9 @@ export default function HomePage() {
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
                     <div className="absolute inset-0 bg-gradient-to-r from-brand-primary/20 to-easyoft-lightBlue/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                     <div className="absolute bottom-4 right-4 text-white">
-                      <Badge className="bg-gradient-to-r from-brand-primary to-easyoft-blue text-white mb-2 shadow-lg">
+                      {/* <Badge className="bg-gradient-to-r from-brand-primary to-easyoft-blue text-white mb-2 shadow-lg">
                         {category.product_count} منتج
-                      </Badge>
+                      </Badge> */}
                     </div>
                   </div>
                   <CardContent className="p-6 bg-gradient-to-br from-white to-easyoft-sky group-hover:from-easyoft-sky group-hover:to-white transition-all duration-300">
@@ -288,9 +330,11 @@ export default function HomePage() {
                             {product.original_price.toLocaleString()} ر.س
                           </span>
                         )}
+
+                        
                       </div>
                     </div>
-                    <Button
+                    {/* <Button
                       size="sm"
                       className="bg-gradient-to-r from-brand-primary to-easyoft-blue hover:from-easyoft-blue hover:to-brand-primary text-white text-xs px-4 py-2 rounded-lg shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 group"
                       onClick={(e) => {
@@ -302,6 +346,48 @@ export default function HomePage() {
                       <Plus className="h-3 w-3 ml-1 group-hover:rotate-90 transition-transform duration-300" />
                       أضف للسلة
                     </Button>
+
+                      <Button
+                      size="sm"
+                      className="bg-gradient-to-r from-brand-primary to-easyoft-blue hover:from-easyoft-blue hover:to-brand-primary text-white text-xs px-4 py-2 rounded-lg shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 group"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        handleAddToCartWith(product)
+                      }}
+                    >
+                      <Plus className="h-3 w-3 ml-1 group-hover:rotate-90 transition-transform duration-300" />
+                        اضف للسله بالتركيب 
+                    </Button> */}
+
+                    <div className="flex flex-col gap-2">
+                      <Button
+                        size="sm"
+                        className="bg-gradient-to-r from-brand-primary to-easyoft-blue hover:from-easyoft-blue hover:to-brand-primary text-white text-xs px-4 py-2 rounded-lg shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 group"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          handleAddToCart(product)
+                        }}
+                      >
+                        <Plus className="h-3 w-3 ml-1 group-hover:rotate-90 transition-transform duration-300" />
+                        أضف للسلة
+                      </Button>
+
+                      <Button
+                        size="sm"
+                        className="bg-gradient-to-r from-brand-primary to-easyoft-blue hover:from-easyoft-blue hover:to-brand-primary text-white text-xs px-4 py-2 rounded-lg shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 group"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          handleAddToCartWith(product)
+                        }}
+                      >
+                        <Plus className="h-3 w-3 ml-1 group-hover:rotate-90 transition-transform duration-300" />
+                        اضف للسله بالتركيب
+                      </Button>
+                    </div>
+
                   </div>
                 </CardContent>
               </Card>
@@ -371,7 +457,7 @@ export default function HomePage() {
       <footer className="bg-gradient-to-r from-easyoft-navy to-easyoft-darkBlue text-white py-12">
         <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-4 gap-8">
-            <div className="animate-fade-in">
+            {/* <div className="animate-fade-in">
               <Image
                 src="/easyoft-logo.png"
                 alt="EASYoft"
@@ -382,7 +468,7 @@ export default function HomePage() {
               <p className="text-gray-300 mb-4 leading-relaxed">
                 نقدم أحدث حلول الأمان والتقنيات الذكية لحماية ممتلكاتك وتوفير الراحة والأمان
               </p>
-            </div>
+            </div> */}
             <div className="animate-fade-in" style={{ animationDelay: "0.1s" }}>
               <h3 className="text-lg font-semibold mb-4 text-easyoft-lightBlue">روابط سريعة</h3>
               <ul className="space-y-2">
@@ -431,7 +517,7 @@ export default function HomePage() {
             </div>
           </div>
           <div className="border-t border-easyoft-blue/30 mt-8 pt-8 text-center text-gray-300 animate-fade-in">
-            <p>&copy; 2024 EASYoft. جميع الحقوق محفوظة.</p>
+            <p>&copy; 2025 EasySoft. جميع الحقوق محفوظة.</p>
           </div>
         </div>
       </footer>
