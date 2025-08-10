@@ -20,13 +20,13 @@ export const metadata: Metadata = {
     "نقدم أحدث تقنيات الأمان والمنازل الذكية لحماية ممتلكاتك وتوفير الراحة والأمان",
   generator: "easysoft.com",
   icons: {
-    icon: "public/easyoft-logo.png", // مسار اللوجو كـ favicon
+    icon: "/easyoft-logo.png", // مسار اللوجو كـ favicon
   },
   openGraph: {
     title: "EazySoft - حلول الأمان والتكنولوجيا الذكية",
     description:
       "نقدم أحدث تقنيات الأمان والمنازل الذكية لحماية ممتلكاتك وتوفير الراحة والأمان",
-    images: ["public/easyoft-logo.png"], // صورة تظهر عند مشاركة الرابط
+    images: ["/easyoft-logo.png"], // صورة تظهر عند مشاركة الرابط
   },
 };
 
